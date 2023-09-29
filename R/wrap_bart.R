@@ -13,7 +13,7 @@ base_dummyVars <- function(df) {
 # Getting the BART wrapped function
 #' @export
 bart2 <- function(x_train,
-                  y,
+                  y_mat,
                   x_test,
                   n_tree = 2,
                   node_min_size = 5,
@@ -32,11 +32,17 @@ bart2 <- function(x_train,
                   usequants = FALSE
                   ) {
 
+     # Verifying if it's been using a y_mat matrix
+     if(NCOL(y_mat)<2){
+         stop("Insert a valid multivariate response. ")
+     }
 
      # Verifying if x_train and x_test are matrices
      if(!is.data.frame(x_train) || !is.data.frame(x_test)){
           stop("Insert valid data.frame for both data and xnew.")
      }
+
+
 
 
      # Getting the valid
@@ -81,11 +87,6 @@ bart2 <- function(x_train,
              x_test_scale[,i] <- normalize_covariates_bart(y = x_test_scale[,i],a = x_min[i], b = x_max[i])
      }
 
-     aux_t <- bartModelMatrix(X = x_train_scale,numcut = numcut)
-     print(dim(aux_t$xinfo))
-     print(dim(x_train_scale))
-
-
      # Creating the numcuts matrix of splitting rules
      xcut_m <- matrix(NA,nrow = numcut,ncol = ncol(x_train_scale))
      for(i in 1:ncol(x_train_scale)){
@@ -100,54 +101,54 @@ bart2 <- function(x_train,
      }
 
 
-     if(!(sum(t(aux_t$xinfo)==xcut_m)==(nrow(xcut_m)*ncol(xcut_m)))){
-             stop("Something wrong here")
-     }
-
-
      # Scaling the y
-     min_y <- min(y)
-     max_y <- max(y)
+     min_y <- apply(y_mat,2,min)
+     max_y <- apply(y_mat,2,max)
 
      # Getting the min and max for each column
      min_x <- apply(x_train_scale,2,min)
      max_x <- apply(x_train_scale, 2, max)
 
-     # Scaling "y"
-     if(scale_bool){
-        y_scale <- normalize_bart(y = y,a = min_y,b = max_y)
-        tau_mu <- (4*n_tree*(kappa^2))
 
-     } else {
-        y_scale <- y
+     # Defining tau_mu_j
+     tau_mu_j <- (4*n_tree*(kappa^2))/((max_y-min_y)^2)
 
-        tau_mu <- (4*n_tree*(kappa^2))/((max_y-min_y)^2)
-     }
 
      # Getting the naive sigma value
-     nsigma <- naive_sigma(x = x_train_scale,y = y_scale)
+     nsigma <- apply(y_mat, 2, function(Y){naive_sigma(x = x_train_scale,y = Y)})
 
-     # Calculating tau hyperparam
-     a_tau <- df/2
+     # Define the ensity function
+     phalft <- function(x, A, nu){
+             f <- function(x){
+                     2 * gamma((nu + 1)/2)/(gamma(nu/2)*sqrt(nu * pi * A^2)) * (1 + (x^2)/(nu * A^2))^(- (nu + 1)/2)
+             }
+             integrate(f, lower = 0, upper = x)$value
+     }
+
+     # Define parameters
+     nu <- df
 
      # Calculating lambda
-     qchi <- stats::qchisq(p = 1-sigquant,df = df,lower.tail = 1,ncp = 0)
-     lambda <- (nsigma*nsigma*qchi)/df
-     d_tau <- (lambda*df)/2
+     A_j <- sapply(nsigma, function(sigma){
+             optim(par = 0.01, f = function(A){(sigquant - phalft(sigma, A, nu)^2)},
+                   method = "Brent",lower = 0.00001,upper = 100)$par
+     })
 
+     a_j_init <- sapply(A_j,function(A_j_){1/rgamma(n = 1,shape = 2,scale = A_j_^2)})
+
+     s_0_wish <- 2*nu*diag(1/a_j_init)
 
      # Call the bart function
-     # tau_init <- tau
-     tau_init <- nsigma^(-2)
+     Sigma_init <- diag(nsigma)
 
-     mu_init <- mean(y_scale)
+     mu_init <- apply(y_mat,2,mean)
 
      # Creating the vector that stores all trees
      all_tree_post <- vector("list",length = round(n_mcmc-n_burn))
 
      # Generating the BART obj
      bart_obj <- cppbart(x_train_scale,
-          y_scale,
+          y_mat,
           x_test_scale,
           xcut_m,
           n_tree,

@@ -9,12 +9,6 @@ using namespace std;
 // Statistics Function
 // =====================================
 
-
-
-
-
-
-
 // //[[Rcpp::export]]
 arma::mat sum_exclude_col(arma::mat mat, int exclude_int){
 
@@ -36,7 +30,7 @@ arma::mat sum_exclude_col(arma::mat mat, int exclude_int){
 
 // Initialising the model Param
 modelParam::modelParam(arma::mat x_train_,
-                       arma::vec y_,
+                       arma::mat y_,
                        arma::mat x_test_,
                        arma::mat xcut_,
                        int n_tree_,
@@ -54,7 +48,7 @@ modelParam::modelParam(arma::mat x_train_,
 
         // Assign the variables
         x_train = x_train_;
-        y = y_;
+        y_mat = y_;
         x_test = x_test_;
         xcut = xcut_;
         n_tree = n_tree_;
@@ -69,8 +63,8 @@ modelParam::modelParam(arma::mat x_train_,
         n_burn = n_burn_;
 
         // Grow acceptation ratio
-        move_proposal = arma::vec(5,arma::fill::zeros);
-        move_acceptance = arma::vec(5,arma::fill::zeros);
+        move_proposal = arma::vec(3,arma::fill::zeros);
+        move_acceptance = arma::vec(3,arma::fill::zeros);
 
         stump = stump_; // Checking if only restrict the model to stumps
 
@@ -90,7 +84,7 @@ Node::Node(modelParam &data){
         var_split_rule = -1.0;
         lower = 0.0;
         upper = 1.0;
-        mu = 0.0;
+        mu = arma::zeros(data.y_mat.n_cols);
         n_leaf = 0.0;
         n_leaf_test = 0;
         log_likelihood = 0.0;
@@ -871,8 +865,7 @@ void Node::updateResiduals(modelParam& data, arma::vec &curr_res){
         }
 
         r_sum = 0.0;
-        r_sq_sum = 0.0;
-
+        u_sum = 0.0;
         // Train elements
         for(int i = 0; i < n_leaf;i++){
                 r_sum = r_sum + curr_res(train_index[i]);
@@ -952,23 +945,12 @@ void getPredictions(Node* tree,
 }
 
 
-// Updating the tau parameter
-void updateTau(arma::vec &y_hat,
-               modelParam &data){
-
-        // Getting the sum of residuals square
-        double tau_res_sq_sum = dot((y_hat-data.y),(y_hat-data.y));
-
-        data.tau = R::rgamma((0.5*data.y.size()+data.a_tau),1/(0.5*tau_res_sq_sum+data.d_tau));
-
-        return;
-}
 
 
 // Creating the BART function
 // [[Rcpp::export]]
 Rcpp::List cppbart(arma::mat x_train,
-          arma::vec y_train,
+          arma::mat y_train,
           arma::mat x_test,
           arma::mat x_cut,
           int n_tree,
@@ -1017,14 +999,18 @@ Rcpp::List cppbart(arma::mat x_train,
 
 
         // Defining other variables
-        arma::vec partial_pred = (data.y)/n_tree;
-        // arma::vec partial_pred = arma::vec(data.x_train.n_rows,arma::fill::zeros);
+        arma::vec partial_pred = arma::mat(data.x_train.n_rows,
+                                           data.y_mat.n_cols,
+                                           arma::fill::zeros);
 
-        arma::vec partial_residuals = arma::zeros<arma::vec>(data.x_train.n_rows);
-        arma::mat tree_fits_store(data.x_train.n_rows,data.n_tree,arma::fill::zeros);
+        arma::vec partial_residuals = arma::mat(data.x_train.n_rows,data.y_mat.n_cols,arma::fill::zeros);
+        arma::cube tree_fits_store(data.x_train.n_rows,data.n_tree,data.y_mat.n_cols,arma::fill::zeros);
+
+        // In case if I need to start with another initial values
         // for(int i = 0 ; i < data.n_tree ; i ++ ){
         //         tree_fits_store.col(i) = partial_pred;
         // }
+
         arma::mat tree_fits_store_test(data.x_test.n_rows,data.n_tree,arma::fill::zeros);
         double verb;
 

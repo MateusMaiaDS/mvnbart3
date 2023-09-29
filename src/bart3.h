@@ -7,7 +7,7 @@ struct modelParam;
 struct modelParam {
 
         arma::mat x_train;
-        arma::vec y;
+        arma::mat y_mat;
         arma::mat x_test;
         arma::mat xcut;
 
@@ -37,7 +37,7 @@ struct modelParam {
 
         // Defining the constructor for the model param
         modelParam(arma::mat x_train_,
-                   arma::vec y_,
+                   arma::mat y_,
                    arma::mat x_test_,
                    arma::mat x_cut_,
                    int n_tree_,
@@ -87,12 +87,13 @@ struct Node {
 
 
      // Leaf parameters
-     double mu;
+     arma::vec mu;
+     arma::vec u;
 
      // Storing sufficient statistics over the nodes
      double log_likelihood = 0.0;
-     double r_sq_sum = 0;
-     double r_sum = 0;
+     double r_sum = 0.0;
+     double u_sum = 0.0;
 
      int n_leaf = 0;
      int n_leaf_test = 0;
