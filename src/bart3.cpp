@@ -30,35 +30,35 @@ arma::mat sum_exclude_col(arma::mat mat, int exclude_int){
 
 // Initialising the model Param
 modelParam::modelParam(arma::mat x_train_,
-                       arma::mat y_,
-                       arma::mat x_test_,
-                       arma::mat xcut_,
-                       int n_tree_,
-                       int node_min_size_,
-                       double alpha_,
-                       double beta_,
-                       double tau_mu_,
-                       double tau_,
-                       double a_tau_,
-                       double d_tau_,
-                       double n_mcmc_,
-                       double n_burn_,
-                       bool stump_){
+                        arma::mat y_,
+                        arma::mat x_test_,
+                        arma::mat x_cut_,
+                        int n_tree_,
+                        int node_min_size_,
+                        double alpha_,
+                        double beta_,
+                        arma::vec tau_mu_,
+                        arma::mat Sigma_,
+                        arma::vec a_j_vec_,
+                        arma::vec A_j_vec_,
+                        double n_mcmc_,
+                        double n_burn_,
+                        bool stump_){
 
 
         // Assign the variables
         x_train = x_train_;
         y_mat = y_;
         x_test = x_test_;
-        xcut = xcut_;
+        xcut = x_cut_;
         n_tree = n_tree_;
         node_min_size = node_min_size_;
         alpha = alpha_;
         beta = beta_;
         tau_mu = tau_mu_;
-        tau = tau_;
-        a_tau = a_tau_;
-        d_tau = d_tau_;
+        Sigma = Sigma_;
+        a_j_vec = a_j_vec_;
+        A_j_vec = A_j_vec_;
         n_mcmc = n_mcmc_;
         n_burn = n_burn_;
 
@@ -284,7 +284,7 @@ std::vector<Node*> nogs(Node* tree){
 Forest::Forest(modelParam& data){
 
         // Creatina vector of size of number of trees
-        trees.resize(data.n_tree);
+        trees.resize(data.n_tree*data.y_mat.n_cols);
         for(int  i=0;i<data.n_tree;i++){
                 // Creating the stump for each tree
                 trees[i] = new Node(data);
@@ -835,7 +835,9 @@ void change(Node* tree, modelParam &data, arma::vec &curr_res){
 
 
 // Calculating the Loglilelihood of a node
-void Node::updateResiduals(modelParam& data, arma::vec &curr_res){
+void Node::updateResiduals(modelParam& data,
+                           arma::vec &curr_res,
+                           arma::mat &curr_u){
 
         // Getting number of leaves in case of a root
         if(isRoot){
@@ -850,7 +852,6 @@ void Node::updateResiduals(modelParam& data, arma::vec &curr_res){
         // if(n_leaf < 100){
                 n_leaf = 0;
                 r_sum = 0;
-                r_sq_sum =  0;
                 log_likelihood = -2000000; // Absurd value avoid this case
                 // cout << "OOOPS something happened" << endl;
                 return;
@@ -866,10 +867,16 @@ void Node::updateResiduals(modelParam& data, arma::vec &curr_res){
 
         r_sum = 0.0;
         u_sum = 0.0;
+
         // Train elements
         for(int i = 0; i < n_leaf;i++){
                 r_sum = r_sum + curr_res(train_index[i]);
+                u_sum = u_sum + curr_u(train_index[i]);
         }
+
+        sigma_mu_j_sq = data.sigma_mu_j*data.sigma_mu_j;
+        Gamma_j  = n_leaf+data.v_j/sigma_mu_j_sq;
+        S_j = r_sum-u_sum;
 
         return;
 
@@ -877,8 +884,9 @@ void Node::updateResiduals(modelParam& data, arma::vec &curr_res){
 
 void Node::nodeLogLike(modelParam& data, arma::vec &curr_res){
         // Getting the log-likelihood;
-        // log_likelihood = -0.5*data.tau*r_sq_sum - 0.5*log(data.tau_mu + (n_leaf*data.tau)) + (0.5*(data.tau*data.tau)*(r_sum*r_sum))/( (data.tau*n_leaf)+data.tau_mu);
-        log_likelihood = - 0.5*log(data.tau_mu + (n_leaf*data.tau)) + (0.5*(data.tau*data.tau)*(r_sum*r_sum))/( (data.tau*n_leaf)+data.tau_mu);
+        // double sigma_mu_j_sq = data.sigma_mu_j*data.sigma_mu_j;
+
+        log_likelihood = -0.5*log(2*arma::datum::pi*sigma_mu_j_sq)+0.5*log(data.v_j/Gamma_j) +0.5*(S_j*S_j)/(data.v_j*Gamma_j);
         return;
 }
 
@@ -888,9 +896,10 @@ void updateMu(Node* tree, modelParam &data){
         // Getting the terminal nodes
         std::vector<Node*> t_nodes = leaves(tree);
 
+
         // Iterating over the terminal nodes and updating the beta values
         for(int i = 0; i < t_nodes.size();i++){
-                t_nodes[i]->mu = R::rnorm((data.tau*t_nodes[i]->r_sum)/(t_nodes[i]->n_leaf*data.tau+data.tau_mu),sqrt(1/(data.tau*t_nodes[i]->n_leaf+data.tau_mu))) ;
+                t_nodes[i]->mu = R::rnorm((data.tau*t_nodes[i]->r_sum)/(t_nodes[i]->Gamma_j),sqrt(data.v_j/(t_nodes[i]->Gamma_j))) ;
 
         }
 }
@@ -945,33 +954,42 @@ void getPredictions(Node* tree,
 }
 
 
+void update_a_j(ModelParam &data){
 
+        double shape_j = data
+
+        // Calcularting shape and scale parameters
+        for(int j = 0; j < data.y_mat.n_cols; j++){
+        }
+}
 
 // Creating the BART function
 // [[Rcpp::export]]
 Rcpp::List cppbart(arma::mat x_train,
-          arma::mat y_train,
+          arma::mat y_mat,
           arma::mat x_test,
           arma::mat x_cut,
           int n_tree,
           int node_min_size,
           int n_mcmc,
           int n_burn,
-          double tau, double mu,
-          double tau_mu,
+          arma::mat Sigma_init,
+          arma::vec mu_init,
+          arma::vec tau_mu,
           double alpha, double beta,
-          double a_tau, double d_tau,
-          bool stump,
-          bool no_rotation_bool){
+          arma:: mat S_0_wish,
+          arma:: mat A_j_vec,
+          bool stump){
 
         // Posterior counter
         int curr = 0;
 
 
+
         // cout << " Error on model.param" << endl;
         // Creating the structu object
         modelParam data(x_train,
-                        y_train,
+                        y_mat,
                         x_test,
                         x_cut,
                         n_tree,
@@ -979,9 +997,9 @@ Rcpp::List cppbart(arma::mat x_train,
                         alpha,
                         beta,
                         tau_mu,
-                        tau,
-                        a_tau,
-                        d_tau,
+                        Sigma_init,
+                        S_0_wish,
+                        A_j_vec,
                         n_mcmc,
                         n_burn,
                         stump);
@@ -990,28 +1008,28 @@ Rcpp::List cppbart(arma::mat x_train,
         int n_post = n_mcmc - n_burn;
 
         // Defining those elements
-        arma::mat y_train_hat_post = arma::zeros<arma::mat>(data.x_train.n_rows,n_post);
-        arma::mat y_test_hat_post = arma::zeros<arma::mat>(data.x_test.n_rows,n_post);
+        arma::cube y_train_hat_post(data.y_mat.n_rows,data.y_mat.n_cols,n_post,arma::fill::zeros);
+        arma::cube y_test_hat_post(data.x_test.n_rows,data.y_mat.n_cols,n_post,arma::fill::zeros);
+        arma::cube Sigma_post(data.Sigma.n_rows,data.Sigma.n_cols,n_post,arma::fill::zeros);
 
-        arma::cube all_tree_post(y_train.size(),n_tree,n_post,arma::fill::zeros);
-        arma::vec tau_post = arma::zeros<arma::vec>(n_post);
-        arma::vec all_tau_post = arma::zeros<arma::vec>(n_mcmc);
+
+        // =====================================
+        // For the moment I will not store those
+        // =====================================
+        // arma::cube all_tree_post(y_mat.size(),n_tree,n_post,arma::fill::zeros);
 
 
         // Defining other variables
-        arma::vec partial_pred = arma::mat(data.x_train.n_rows,
-                                           data.y_mat.n_cols,
-                                           arma::fill::zeros);
-
+        arma::vec partial_pred = arma::mat(data.x_train.n_rows,data.y_mat.n_cols,arma::fill::zeros);
         arma::vec partial_residuals = arma::mat(data.x_train.n_rows,data.y_mat.n_cols,arma::fill::zeros);
         arma::cube tree_fits_store(data.x_train.n_rows,data.n_tree,data.y_mat.n_cols,arma::fill::zeros);
+        arma::cube tree_fits_store_test(data.x_test.n_rows,data.n_tree,y_mat.n_cols,arma::fill::zeros);
+
 
         // In case if I need to start with another initial values
         // for(int i = 0 ; i < data.n_tree ; i ++ ){
         //         tree_fits_store.col(i) = partial_pred;
         // }
-
-        arma::mat tree_fits_store_test(data.x_test.n_rows,data.n_tree,arma::fill::zeros);
         double verb;
 
         // Defining progress bars parameters
@@ -1023,6 +1041,16 @@ Rcpp::List cppbart(arma::mat x_train,
 
         // Selecting the train
         Forest all_forest(data);
+        int n_all_tree = data.n_tree*data.y_mat.n_cols;
+
+        // Creating variables to help define in which tree set we are;
+        arma::vec tree_max_counter(data.y_mat.n_cols);
+        tree_max_counter(0) = data.n_tree;
+        for(int j_aux = 1; j_aux < data.y_mat.n_cols; j_aux++){
+                tree_max_counter(j_aux) = tree_max_counter(j_aux)-1+data.n_tree;
+        }
+        int curr_tree_set = 0;
+        int curr_tree_counter ;
 
         for(int i = 0;i<data.n_mcmc;i++){
 
@@ -1043,77 +1071,135 @@ Rcpp::List cppbart(arma::mat x_train,
 
 
                 // Getting zeros
-                arma::vec prediction_train_sum(data.x_train.n_rows,arma::fill::zeros);
-                arma::vec prediction_test_sum(data.x_test.n_rows,arma::fill::zeros);
+                arma::mat prediction_train_sum(data.x_train.n_rows,data.y_mat.n_cols,arma::fill::zeros);
+                arma::mat prediction_test_sum(data.x_test.n_rows,data.y_mat.n_cols,arma::fill::zeros);
+
+                // Matrix that store all the predictions for all y
+                arma::mat y_mat_hat(data.x_train.n_rows,data.y_mat.n_cols,arma::fill::zeros);
+                arma::mat y_mat_test_hat(data.x_train.n_rows,data.y_mat.n_cols,arma::fill::zeros);
+
+                // Iterating over the d-dimension MATRICES of the response.
+                for(int j = 0; j < data.y_mat.n_cols; j++){
 
 
-                for(int t = 0; t<data.n_tree;t++){
+                arma::mat Sigma_j_mj(1,(data.y_mat.n_cols-1),arma::fill::zeros);
+                arma::mat Sigma_mj_mj = data.Sigma;
+                arma::mat Sigma_mj_j((data.y_mat.n_cols-1),1,arma::fill::zeros);
 
-                        // Creating the auxliar prediction vector
-                        arma::vec y_hat(data.y.n_rows,arma::fill::zeros);
-                        arma::vec prediction_test(data.x_test.n_rows,arma::fill::zeros);
-                        arma::vec y_hat_var(data.y.n_rows,arma::fill::zeros);
-                        arma::vec y_hat_test_var(data.x_test.n_rows,arma::fill::zeros);
 
-                        // cout << "Residuals error "<< endl;
-                        // Updating the partial residuals
-                        if(data.n_tree>1){
-                                partial_residuals = data.y-sum_exclude_col(tree_fits_store,t);
+                double Sigma_j_j = data.Sigma(j,j);
 
-                        } else {
-                                partial_residuals = data.y;
+                int aux_j_counter = 0;
+
+                // Dropping the column with respect to "j"
+                Sigma_mj_mj.shed_row(j);
+                Sigma_mj_mj.shed_col(j);
+
+                arma::mat partial_u(data.x_train.n_rows,(data.y_mat.n_cols-1));
+                arma::mat y_mj(data.x_train.n_rows,data.y_mat.n_cols);
+                arma::mat y_hat_mj(data.x_train.n_rows,data.y_mat.n_cols);
+
+                for(int d = 0; d< data.y_mat.n_cols; d++){
+                        if(d!=j){
+                                Sigma_j_mj(0,aux_j_counter)  = data.Sigma(j,d);
+                                Sigma_mj_j(aux_j_counter,0) = data.Sigma(j,d);
                         }
-
-                        // Iterating over all trees
-                        verb = arma::randu(arma::distr_param(0.0,1.0));
-                        if(all_forest.trees[t]->isLeaf & all_forest.trees[t]->isRoot){
-                                // verb = arma::randu(arma::distr_param(0.0,0.3));
-                                verb = 0.1;
-                        }
-
-
-                        // Selecting the verb
-                        if(verb < 0.25){
-                                data.move_proposal(0)++;
-                                // cout << " Grow error" << endl;
-                                grow(all_forest.trees[t],data,partial_residuals);
-                        } else if(verb>=0.25 & verb <0.5) {
-                                data.move_proposal(2)++;
-
-                                // cout << " Prune error" << endl;
-                                prune(all_forest.trees[t], data, partial_residuals);
-                        } else {
-                                data.move_proposal(3)++;
-                                // cout << " Change error" << endl;
-                                change(all_forest.trees[t], data, partial_residuals);
-                                // std::cout << "Error after change" << endl;
-                        }
-
-
-                        updateMu(all_forest.trees[t],data);
-
-                        // Getting predictions
-                        // cout << " Error on Get Predictions" << endl;
-                        getPredictions(all_forest.trees[t],data,y_hat,prediction_test);
-
-                        // Updating the tree
-                        // cout << "Residuals error 2.0"<< endl;
-                        tree_fits_store.col(t) = y_hat;
-                        // cout << "Residuals error 3.0"<< endl;
-                        tree_fits_store_test.col(t) = prediction_test;
-                        // cout << "Residuals error 4.0"<< endl;
-
+                        aux_j_counter++;
 
                 }
 
-                // Summing over all trees
-                prediction_train_sum = sum(tree_fits_store,1);
 
-                prediction_test_sum = sum(tree_fits_store_test,1);
+                // ============================================
+                // This step does not iterate over the trees!!!
+                // ===========================================
+                y_mj = data.y_mat;
+                y_mj.shed_col(j);
+                y_hat_mj = y_hat_mat;
+                y_hat_mj.shed_col(j);
+
+                // Calculating the invertion that gonna be used for the U and V
+                arma::mat Sigma_mj_mj_inv = arma::inv_sympd(Sigma_mj_mj);
+
+                // Calculating the current partial U
+                partial_u = Sigma_mj_j*Sigma_mj_mj_inv*(y_mj-y_hat_mj));
+                double v = Sigma_j_j - Sigma_j_mj*Sigma_mj_mj_inv*Sigma_mj_j;
+                data.v_j = v;
+                data.sigma_mu_j = sigma_mu(j);
+
+                // Updating the tree
+                        for(int t = 0; t<data.n_tree;t++){
+
+                                // Current tree counter
+                                curr_tree_counter = t + j*data.n_tree;
+
+                                // Creating the auxliar prediction vector
+                                arma::vec y_j_hat(data.y_mat.n_rows,arma::fill::zeros);
+                                arma::vec y_j_test_hat(data.x_test.n_rows,arma::fill::zeros);
+
+                                // Updating the partial residuals
+                                if(data.n_tree>1){
+                                        partial_residuals = data.y_mat.col(j)-sum_exclude_col(tree_fits_store.slice(j),t);
+                                } else {
+                                        partial_residuals = data.y_mat.col(j);
+                                }
+
+                                // Iterating over all trees
+                                verb = arma::randu(arma::distr_param(0.0,1.0));
+                                if(all_forest.trees[t]->isLeaf & all_forest.trees[t]->isRoot){
+                                        // verb = arma::randu(arma::distr_param(0.0,0.3));
+                                        verb = 0.1;
+                                }
+
+
+                                // Selecting the verb
+                                if(verb < 0.25){
+                                        data.move_proposal(0)++;
+                                        // cout << " Grow error" << endl;
+                                        grow(all_forest.trees[curr_tree_counter],data,partial_residuals);
+                                } else if(verb>=0.25 & verb <0.5) {
+                                        data.move_proposal(2)++;
+
+                                        // cout << " Prune error" << endl;
+                                        prune(all_forest.trees[curr_tree_counter], data, partial_residuals);
+                                } else {
+                                        data.move_proposal(3)++;
+                                        // cout << " Change error" << endl;
+                                        change(all_forest.trees[curr_tree_counter], data, partial_residuals);
+                                        // std::cout << "Error after change" << endl;
+                                }
+
+
+                                updateMu(all_forest.trees[curr_tree_counter],data);
+
+                                // Getting predictions
+                                // cout << " Error on Get Predictions" << endl;
+                                getPredictions(all_forest.trees[curr_tree_counter],data,y_j_hat,y_j_test_hat);
+
+                                // Updating the tree
+                                // cout << "Residuals error 2.0"<< endl;
+                                tree_fits_store.col(t) = y_hat;
+                                // cout << "Residuals error 3.0"<< endl;
+                                tree_fits_store_test.col(t) = y_j_test_hat;
+                                // cout << "Residuals error 4.0"<< endl;
+
+
+                        }
+
+                        // Summing over all trees
+                        prediction_train_sum = sum(tree_fits_store,1);
+                        y_mat_hat.col(j) = prediction_train_sum;
+
+                        prediction_test_sum = sum(tree_fits_store_test,1);
+                        y_mat_test_hat.col(j) = prediction_test_sum;
+
+                }
+
 
 
                 // std::cout << "Error Tau: " << data.tau<< endl;
-                updateTau(prediction_train_sum, data);
+                update_a_j(data);
+
+                updateTau(y_mat_hat, data);
                 // std::cout << "New Tau: " << data.tau<< endl;
                 all_tau_post(i) = data.tau;
 

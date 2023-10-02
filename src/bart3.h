@@ -17,8 +17,11 @@ struct modelParam {
         int d_var; // Dimension of variables in my base
         double alpha;
         double beta;
-        double tau_mu;
-        double tau;
+        arma::vec sigma_mu;
+        arma::mat Sigma;
+        arma::mat S_0_wish;
+        arma::vec a_j_vec;
+        arma::vec A_j_vec;
         double a_tau;
         double d_tau;
         double nu;
@@ -35,19 +38,23 @@ struct modelParam {
         // Create a boolean to only use stumps
         bool stump;
 
+        // Elements to be used in the loglikelihood update and mu update
+        double v_j;
+        double sigma_mu_j;
+
         // Defining the constructor for the model param
         modelParam(arma::mat x_train_,
-                   arma::mat y_,
+                   arma::mat y_mat,
                    arma::mat x_test_,
                    arma::mat x_cut_,
                    int n_tree_,
                    int node_min_size_,
                    double alpha_,
                    double beta_,
-                   double tau_mu_,
-                   double tau_,
-                   double a_tau_,
-                   double d_tau_,
+                   arma::vec tau_mu_,
+                   arma::mat Sigma_,
+                   arma::mat S_0_wish_,
+                   arma::vec A_j_vec_,
                    double n_mcmc_,
                    double n_burn_,
                    bool stump_);
@@ -94,6 +101,10 @@ struct Node {
      double log_likelihood = 0.0;
      double r_sum = 0.0;
      double u_sum = 0.0;
+     double Gamma_j;
+     double sigma_mu_j_sq;
+     dobule S_j;
+
 
      int n_leaf = 0;
      int n_leaf_test = 0;
@@ -111,7 +122,7 @@ struct Node {
      void change(Node* tree, modelParam &data, arma::vec&curr_res);
 
      void nodeLogLike(modelParam &data, arma::vec &curr_res);
-     void updateResiduals(modelParam& data, arma::vec &curr_res);
+     void updateResiduals(modelParam& data, arma::vec &curr_res, arma::mat &curr_u);
      void displayCurrNode();
 
      Node(modelParam &data);

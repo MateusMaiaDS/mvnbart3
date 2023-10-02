@@ -136,7 +136,7 @@ bart2 <- function(x_train,
 
      a_j_init <- sapply(A_j,function(A_j_){1/rgamma(n = 1,shape = 2,scale = A_j_^2)})
 
-     s_0_wish <- 2*nu*diag(1/a_j_init)
+     S_0_wish <- 2*nu*diag(1/a_j_init)
 
      # Call the bart function
      Sigma_init <- diag(nsigma)
@@ -155,14 +155,14 @@ bart2 <- function(x_train,
           node_min_size,
           n_mcmc,
           n_burn,
-          tau_init,
+          Sigma_init,
           mu_init,
-          tau_mu,
+          tau_mu_j,
           alpha,
           beta,
-          a_tau,d_tau,
-          stump,
-          no_rotation_bool)
+          S_0_wish,
+          A_j_vec,
+          stump)
 
 
      if(scale_bool){
