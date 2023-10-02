@@ -1068,7 +1068,7 @@ Rcpp::List cppbart(arma::mat x_train,
         // arma::vec partial_pred = arma::mat(data.x_train.n_rows,data.y_mat.n_cols,arma::fill::zeros);
         arma::vec partial_residuals(data.x_train.n_rows,arma::fill::zeros);
         arma::cube tree_fits_store(data.x_train.n_rows,data.n_tree,data.y_mat.n_cols,arma::fill::zeros);
-        arma::cube tree_fits_store_test(data.x_test.n_rows,y_mat.n_cols,data.n_tree,arma::fill::zeros);
+        arma::cube tree_fits_store_test(data.x_test.n_rows,data.n_tree,y_mat.n_cols,arma::fill::zeros);
 
         Rcpp::Rcout << "error here3" << endl;
 
@@ -1213,15 +1213,15 @@ Rcpp::List cppbart(arma::mat x_train,
                                         // Selecting the verb
                                         if(verb < 0.25){
                                                 data.move_proposal(0)++;
-                                                // cout << " Grow error" << endl;
+                                                cout << " Grow error" << endl;
                                                 grow(all_forest.trees[curr_tree_counter],data,partial_residuals,partial_u);
                                         } else if(verb>=0.25 & verb <0.5) {
                                                 data.move_proposal(1)++;
-                                                // cout << " Prune error" << endl;
+                                                cout << " Prune error" << endl;
                                                 prune(all_forest.trees[curr_tree_counter], data, partial_residuals,partial_u);
                                         } else {
                                                 data.move_proposal(2)++;
-                                                // cout << " Change error" << endl;
+                                                cout << " Change error" << endl;
                                                 change(all_forest.trees[curr_tree_counter], data, partial_residuals,partial_u);
                                                 // std::cout << "Error after change" << endl;
                                         }
@@ -1230,24 +1230,24 @@ Rcpp::List cppbart(arma::mat x_train,
                                         updateMu(all_forest.trees[curr_tree_counter],data);
 
                                         // Getting predictions
-                                        // cout << " Error on Get Predictions" << endl;
+                                        cout << " Error on Get Predictions" << endl;
                                         getPredictions(all_forest.trees[curr_tree_counter],data,y_j_hat,y_j_test_hat);
 
                                         // Updating the tree
-                                        // cout << "Residuals error 2.0"<< endl;
-                                        tree_fits_store.col(t) = y_j_hat;
-                                        // cout << "Residuals error 3.0"<< endl;
-                                        tree_fits_store_test.col(t) = y_j_test_hat;
+                                        cout << "Residuals error 2.0"<< endl;
+                                        tree_fits_store.slice(j).col(t) = y_j_hat;
+                                        cout << "Residuals error 3.0"<< endl;
+                                        tree_fits_store_test.slice(j).col(t) = y_j_test_hat;
                                         // cout << "Residuals error 4.0"<< endl;
 
 
                                 } // End of iterations over "t"
 
                                 // Summing over all trees
-                                prediction_train_sum = sum(tree_fits_store,1);
+                                prediction_train_sum = sum(tree_fits_store.slice(j),1);
                                 y_mat_hat.col(j) = prediction_train_sum;
 
-                                prediction_test_sum = sum(tree_fits_store_test,1);
+                                prediction_test_sum = sum(tree_fits_store_test.slice(j),1);
                                 y_mat_test_hat.col(j) = prediction_test_sum;
 
                 }// End of iterations over "j"
