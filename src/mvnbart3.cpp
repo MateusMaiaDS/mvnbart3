@@ -1,4 +1,4 @@
-#include "bart3.h"
+#include "mvnbart3.h"
 #include <iomanip>
 #include<cmath>
 #include <random>
@@ -40,6 +40,7 @@ modelParam::modelParam(arma::mat x_train_,
                         double nu_,
                         arma::vec sigma_mu_,
                         arma::mat Sigma_,
+                        arma::mat S_0_wish_,
                         arma::vec a_j_vec_,
                         arma::vec A_j_vec_,
                         double n_mcmc_,
@@ -87,7 +88,7 @@ Node::Node(modelParam &data){
         var_split_rule = -1.0;
         lower = 0.0;
         upper = 1.0;
-        mu = arma::zeros(data.y_mat.n_cols);
+        mu = 0.0;
         n_leaf = 0.0;
         n_leaf_test = 0;
         log_likelihood = 0.0;
@@ -318,7 +319,7 @@ Node* sample_node(std::vector<Node*> leaves_){
 }
 
 // Grow a tree for a given rule
-void grow(Node* tree, modelParam &data, arma::vec &curr_res){
+void grow(Node* tree, modelParam &data, arma::vec &curr_res, arma::vec& curr_u){
 
         // Getting the number of terminal nodes
         std::vector<Node*> t_nodes = leaves(tree) ;
@@ -334,11 +335,11 @@ void grow(Node* tree, modelParam &data, arma::vec &curr_res){
         // // Calculating the whole likelihood fo the tree
         for(int i = 0; i < t_nodes.size(); i++){
                 // cout << "Error gpNodeLogLike" << endl;
-                t_nodes[i]->updateResiduals(data, curr_res); // Do I need to do this?
+                t_nodes[i]->updateResiduals(data, curr_res,curr_u); // Do I need to do this?
         }
 
         // Calculating the likelihood of the current grown node
-        g_node->nodeLogLike(data,curr_res);
+        g_node->nodeLogLike(data);
         // cout << "LogLike Node ok Grow" << endl;
 
         // Adding the leaves
@@ -469,14 +470,14 @@ void grow(Node* tree, modelParam &data, arma::vec &curr_res){
         // Updating the loglikelihood for those terminal nodes
         // cout << "Calculating likelihood of the new node on left" << endl;
         // cout << " ACCEPTED" << endl;
-        g_node->left->updateResiduals(data,curr_res);
-        g_node->right->updateResiduals(data,curr_res);
+        g_node->left->updateResiduals(data,curr_res,curr_u);
+        g_node->right->updateResiduals(data,curr_res,curr_u);
 
 
         // Calculating the likelihood on the new node on the left
-        g_node->left->nodeLogLike(data, curr_res);
+        g_node->left->nodeLogLike(data);
         // cout << "Calculating likelihood of the new node on right" << endl;
-        g_node->right->nodeLogLike(data, curr_res);
+        g_node->right->nodeLogLike(data);
         // cout << "NodeLogLike ok again" << endl;
 
 
@@ -517,7 +518,7 @@ void grow(Node* tree, modelParam &data, arma::vec &curr_res){
 
 
 // Pruning a tree
-void prune(Node* tree, modelParam&data, arma::vec &curr_res){
+void prune(Node* tree, modelParam&data, arma::vec &curr_res, arma::vec &curr_u){
 
 
         // Getting the number of terminal nodes
@@ -526,8 +527,8 @@ void prune(Node* tree, modelParam&data, arma::vec &curr_res){
         // Can't prune a root
         if(t_nodes.size()==1){
                 // cout << "Nodes size " << t_nodes.size() <<endl;
-                t_nodes[0]->updateResiduals(data,curr_res);
-                t_nodes[0]->nodeLogLike(data, curr_res);
+                t_nodes[0]->updateResiduals(data,curr_res,curr_u);
+                t_nodes[0]->nodeLogLike(data);
                 return;
         }
 
@@ -539,15 +540,15 @@ void prune(Node* tree, modelParam&data, arma::vec &curr_res){
 
         // Calculating the whole likelihood fo the tree
         for(int i = 0; i < t_nodes.size(); i++){
-                t_nodes[i]->updateResiduals(data, curr_res);
+                t_nodes[i]->updateResiduals(data, curr_res,curr_u);
         }
 
         // cout << "Error C1" << endl;
         // Updating the loglikelihood of the selected pruned node
-        p_node->updateResiduals(data,curr_res);
-        p_node->nodeLogLike(data, curr_res);
-        p_node->left->nodeLogLike(data,curr_res);
-        p_node->right->nodeLogLike(data,curr_res);
+        p_node->updateResiduals(data,curr_res,curr_u);
+        p_node->nodeLogLike(data);
+        p_node->left->nodeLogLike(data);
+        p_node->right->nodeLogLike(data);
 
         // Getting the loglikelihood of the new tree
         double new_tree_log_like =  p_node->log_likelihood - (p_node->left->log_likelihood + p_node->right->log_likelihood);
@@ -579,7 +580,7 @@ void prune(Node* tree, modelParam&data, arma::vec &curr_res){
 
 
 // // Creating the change verb
-void change(Node* tree, modelParam &data, arma::vec &curr_res){
+void change(Node* tree, modelParam &data, arma::vec &curr_res, arma::vec &curr_u){
 
 
         // Getting the number of terminal nodes
@@ -592,8 +593,8 @@ void change(Node* tree, modelParam &data, arma::vec &curr_res){
         // In the case of an empty node
         if(c_node->n_leaf==0){
                 return;
-                c_node->left->updateResiduals(data,curr_res);
-                c_node->right->updateResiduals(data,curr_res);
+                // c_node->left->updateResiduals(data,curr_res);
+                // c_node->right->updateResiduals(data,curr_res);
         }
 
         if(c_node->isRoot){
@@ -606,18 +607,20 @@ void change(Node* tree, modelParam &data, arma::vec &curr_res){
         // Calculating the whole likelihood fo the tree
         for(int i = 0; i < t_nodes.size(); i++){
                 // cout << "Loglike error " << ed
-                t_nodes[i]->updateResiduals(data, curr_res);
+                t_nodes[i]->updateResiduals(data, curr_res,curr_u);
         }
 
         // Calculating the loglikelihood of the old nodes
-        c_node->left->nodeLogLike(data,curr_res);
-        c_node->right->nodeLogLike(data,curr_res);
+        c_node->left->nodeLogLike(data);
+        c_node->right->nodeLogLike(data);
 
 
         // Storing all the old loglikelihood from left
         double old_left_log_like = c_node->left->log_likelihood;
-        double old_left_r_sq_sum = c_node->left->r_sq_sum;
         double old_left_r_sum = c_node->left->r_sum;
+        double old_left_u_sum = c_node->left->u_sum;
+        double old_left_Gamma_j = c_node->left->Gamma_j;
+        double old_left_S_j = c_node->left->S_j;
 
         arma::vec old_left_train_index = c_node->left->train_index;
         c_node->left->train_index.fill(-1); // Returning to the original
@@ -626,8 +629,11 @@ void change(Node* tree, modelParam &data, arma::vec &curr_res){
 
         // Storing all of the old loglikelihood from right;
         double old_right_log_like = c_node->right->log_likelihood;
-        double old_right_r_sq_sum = c_node->right->r_sq_sum;
         double old_right_r_sum = c_node->right->r_sum;
+        double old_right_u_sum = c_node->right->u_sum;
+        double old_right_Gamma_j = c_node->right->Gamma_j;
+        double old_right_S_j = c_node->right->S_j;
+
 
         arma::vec old_right_train_index = c_node->right->train_index;
         c_node->right->train_index.fill(-1);
@@ -764,8 +770,10 @@ void change(Node* tree, modelParam &data, arma::vec &curr_res){
                 c_node->upper = old_upper;
 
                 // Returning to the old ones
-                c_node->left->r_sq_sum = old_left_r_sq_sum;
                 c_node->left->r_sum = old_left_r_sum;
+                c_node->left->u_sum = old_left_u_sum;
+                c_node->left->Gamma_j = old_left_Gamma_j ;
+                c_node->left->S_j = old_left_S_j;
 
                 c_node->left->n_leaf = old_left_n_leaf;
                 c_node->left->n_leaf_test = old_left_n_leaf_test;
@@ -774,8 +782,10 @@ void change(Node* tree, modelParam &data, arma::vec &curr_res){
                 c_node->left->test_index = old_left_test_index;
 
                 // Returning to the old ones
-                c_node->right->r_sq_sum = old_right_r_sq_sum;
                 c_node->right->r_sum = old_right_r_sum;
+                c_node->right->u_sum = old_right_u_sum;
+                c_node->right->Gamma_j = old_right_Gamma_j ;
+                c_node->right->S_j = old_right_S_j;
 
                 c_node->right->n_leaf = old_right_n_leaf;
                 c_node->right->n_leaf_test = old_right_n_leaf_test;
@@ -787,10 +797,10 @@ void change(Node* tree, modelParam &data, arma::vec &curr_res){
         }
 
         // Updating the new left and right loglikelihoods
-        c_node->left->updateResiduals(data,curr_res);
-        c_node->right->updateResiduals(data,curr_res);
-        c_node->left->nodeLogLike(data,curr_res);
-        c_node->right->nodeLogLike(data,curr_res);
+        c_node->left->updateResiduals(data,curr_res,curr_u);
+        c_node->right->updateResiduals(data,curr_res,curr_u);
+        c_node->left->nodeLogLike(data);
+        c_node->right->nodeLogLike(data);
 
         // Calculating the acceptance
         double new_tree_log_like =  - old_left_log_like - old_right_log_like + c_node->left->log_likelihood + c_node->right->log_likelihood;
@@ -809,9 +819,10 @@ void change(Node* tree, modelParam &data, arma::vec &curr_res){
                 c_node->upper = old_upper;
 
                 // Returning to the old ones
-                c_node->left->r_sq_sum = old_left_r_sq_sum;
                 c_node->left->r_sum = old_left_r_sum;
-
+                c_node->left->u_sum = old_left_u_sum;
+                c_node->left->Gamma_j = old_left_Gamma_j ;
+                c_node->left->S_j = old_left_S_j;
 
                 c_node->left->n_leaf = old_left_n_leaf;
                 c_node->left->n_leaf_test = old_left_n_leaf_test;
@@ -820,8 +831,10 @@ void change(Node* tree, modelParam &data, arma::vec &curr_res){
                 c_node->left->test_index = old_left_test_index;
 
                 // Returning to the old ones
-                c_node->right->r_sq_sum = old_right_r_sq_sum;
                 c_node->right->r_sum = old_right_r_sum;
+                c_node->right->u_sum = old_right_u_sum;
+                c_node->right->Gamma_j = old_right_Gamma_j ;
+                c_node->right->S_j = old_right_S_j;
 
                 c_node->right->n_leaf = old_right_n_leaf;
                 c_node->right->n_leaf_test = old_right_n_leaf_test;
@@ -840,7 +853,7 @@ void change(Node* tree, modelParam &data, arma::vec &curr_res){
 // Calculating the Loglilelihood of a node
 void Node::updateResiduals(modelParam& data,
                            arma::vec &curr_res,
-                           arma::mat &curr_u){
+                           arma::vec &curr_u){
 
         // Getting number of leaves in case of a root
         if(isRoot){
@@ -885,7 +898,7 @@ void Node::updateResiduals(modelParam& data,
 
 }
 
-void Node::nodeLogLike(modelParam& data, arma::vec &curr_res){
+void Node::nodeLogLike(modelParam& data){
         // Getting the log-likelihood;
         // double sigma_mu_j_sq = data.sigma_mu_j*data.sigma_mu_j;
 
@@ -972,15 +985,16 @@ void getPredictions(Node* tree,
 }
 
 
-void update_a_j(ModelParam &data){
+void update_a_j(modelParam &data){
 
         double shape_j = 0.5*(data.y_mat.n_rows+data.nu);
         arma::mat Precision = arma::inv_sympd(data.Sigma);
 
         // Calcularting shape and scale parameters
         for(int j = 0; j < data.y_mat.n_cols; j++){
-                double scale_j = 1/data.A_j_vec(j)+data.nu*Precision(j,j);
-                data.a_j_vec(j) = 1/Rcpp::rgamma(1,shape_j,scale_j);
+                double scale_j = 1/(data.A_j_vec(j)*data.A_j_vec(j))+data.nu*Precision(j,j);
+                double a_j_vec_double_aux = R::rgamma(shape_j,scale_j);
+                data.a_j_vec(j) = 1/a_j_vec_double_aux;
                 data.S_0_wish(j,j) = (2*data.nu)/data.a_j_vec(j);
         }
 
@@ -999,10 +1013,11 @@ Rcpp::List cppbart(arma::mat x_train,
           int n_burn,
           arma::mat Sigma_init,
           arma::vec mu_init,
-          arma::vec tau_mu,
+          arma::vec sigma_mu,
           double alpha, double beta, double nu,
-          arma:: mat S_0_wish,
-          arma:: mat A_j_vec,
+          arma::mat S_0_wish,
+          arma::vec A_j_vec,
+          arma::vec a_j_vec,
           bool stump){
 
         // Posterior counter
@@ -1021,10 +1036,11 @@ Rcpp::List cppbart(arma::mat x_train,
                         alpha,
                         beta,
                         nu,
-                        tau_mu,
+                        sigma_mu,
                         Sigma_init,
                         S_0_wish,
                         A_j_vec,
+                        a_j_vec,
                         n_mcmc,
                         n_burn,
                         stump);
@@ -1036,6 +1052,7 @@ Rcpp::List cppbart(arma::mat x_train,
         arma::cube y_train_hat_post(data.y_mat.n_rows,data.y_mat.n_cols,n_post,arma::fill::zeros);
         arma::cube y_test_hat_post(data.x_test.n_rows,data.y_mat.n_cols,n_post,arma::fill::zeros);
         arma::cube Sigma_post(data.Sigma.n_rows,data.Sigma.n_cols,n_post,arma::fill::zeros);
+        arma::cube all_Sigma_post(data.Sigma.n_rows,data.Sigma.n_cols,n_mcmc,arma::fill::zeros);
 
 
         // =====================================
@@ -1066,16 +1083,9 @@ Rcpp::List cppbart(arma::mat x_train,
 
         // Selecting the train
         Forest all_forest(data);
-        int n_all_tree = data.n_tree*data.y_mat.n_cols;
 
         // Creating variables to help define in which tree set we are;
-        arma::vec tree_max_counter(data.y_mat.n_cols);
-        tree_max_counter(0) = data.n_tree;
-        for(int j_aux = 1; j_aux < data.y_mat.n_cols; j_aux++){
-                tree_max_counter(j_aux) = tree_max_counter(j_aux)-1+data.n_tree;
-        }
-        int curr_tree_set = 0;
-        int curr_tree_counter ;
+        int curr_tree_counter;
 
         for(int i = 0;i<data.n_mcmc;i++){
 
@@ -1107,123 +1117,123 @@ Rcpp::List cppbart(arma::mat x_train,
                 for(int j = 0; j < data.y_mat.n_cols; j++){
 
 
-                arma::mat Sigma_j_mj(1,(data.y_mat.n_cols-1),arma::fill::zeros);
-                arma::mat Sigma_mj_mj = data.Sigma;
-                arma::mat Sigma_mj_j((data.y_mat.n_cols-1),1,arma::fill::zeros);
+                        arma::mat Sigma_j_mj(1,(data.y_mat.n_cols-1),arma::fill::zeros);
+                        arma::mat Sigma_mj_mj = data.Sigma;
+                        arma::mat Sigma_mj_j((data.y_mat.n_cols-1),1,arma::fill::zeros);
 
 
-                double Sigma_j_j = data.Sigma(j,j);
+                        double Sigma_j_j = data.Sigma(j,j);
 
-                int aux_j_counter = 0;
+                        int aux_j_counter = 0;
 
-                // Dropping the column with respect to "j"
-                Sigma_mj_mj.shed_row(j);
-                Sigma_mj_mj.shed_col(j);
+                        // Dropping the column with respect to "j"
+                        Sigma_mj_mj.shed_row(j);
+                        Sigma_mj_mj.shed_col(j);
 
-                arma::mat partial_u(data.x_train.n_rows,(data.y_mat.n_cols-1));
-                arma::mat y_mj(data.x_train.n_rows,data.y_mat.n_cols);
-                arma::mat y_hat_mj(data.x_train.n_rows,data.y_mat.n_cols);
+                        arma::vec partial_u(data.x_train.n_rows);
+                        arma::mat y_mj(data.x_train.n_rows,data.y_mat.n_cols);
+                        arma::mat y_hat_mj(data.x_train.n_rows,data.y_mat.n_cols);
 
-                for(int d = 0; d< data.y_mat.n_cols; d++){
-                        if(d!=j){
-                                Sigma_j_mj(0,aux_j_counter)  = data.Sigma(j,d);
-                                Sigma_mj_j(aux_j_counter,0) = data.Sigma(j,d);
-                        }
-                        aux_j_counter++;
-
-                }
-
-
-                // ============================================
-                // This step does not iterate over the trees!!!
-                // ===========================================
-                y_mj = data.y_mat;
-                y_mj.shed_col(j);
-                y_hat_mj = y_hat_mat;
-                y_hat_mj.shed_col(j);
-
-                // Calculating the invertion that gonna be used for the U and V
-                arma::mat Sigma_mj_mj_inv = arma::inv_sympd(Sigma_mj_mj);
-
-                // Calculating the current partial U
-                partial_u = Sigma_mj_j*Sigma_mj_mj_inv*(y_mj-y_hat_mj));
-                double v = Sigma_j_j - Sigma_j_mj*Sigma_mj_mj_inv*Sigma_mj_j;
-                data.v_j = v;
-                data.sigma_mu_j = sigma_mu(j);
-
-                // Updating the tree
-                        for(int t = 0; t<data.n_tree;t++){
-
-                                // Current tree counter
-                                curr_tree_counter = t + j*data.n_tree;
-
-                                // Creating the auxliar prediction vector
-                                arma::vec y_j_hat(data.y_mat.n_rows,arma::fill::zeros);
-                                arma::vec y_j_test_hat(data.x_test.n_rows,arma::fill::zeros);
-
-                                // Updating the partial residuals
-                                if(data.n_tree>1){
-                                        partial_residuals = data.y_mat.col(j)-sum_exclude_col(tree_fits_store.slice(j),t);
-                                } else {
-                                        partial_residuals = data.y_mat.col(j);
+                        for(int d = 0; d< data.y_mat.n_cols; d++){
+                                if(d!=j){
+                                        Sigma_j_mj(0,aux_j_counter)  = data.Sigma(j,d);
+                                        Sigma_mj_j(aux_j_counter,0) = data.Sigma(j,d);
                                 }
-
-                                // Iterating over all trees
-                                verb = arma::randu(arma::distr_param(0.0,1.0));
-                                if(all_forest.trees[t]->isLeaf & all_forest.trees[t]->isRoot){
-                                        // verb = arma::randu(arma::distr_param(0.0,0.3));
-                                        verb = 0.1;
-                                }
-
-
-                                // Selecting the verb
-                                if(verb < 0.25){
-                                        data.move_proposal(0)++;
-                                        // cout << " Grow error" << endl;
-                                        grow(all_forest.trees[curr_tree_counter],data,partial_residuals);
-                                } else if(verb>=0.25 & verb <0.5) {
-                                        data.move_proposal(2)++;
-
-                                        // cout << " Prune error" << endl;
-                                        prune(all_forest.trees[curr_tree_counter], data, partial_residuals);
-                                } else {
-                                        data.move_proposal(3)++;
-                                        // cout << " Change error" << endl;
-                                        change(all_forest.trees[curr_tree_counter], data, partial_residuals);
-                                        // std::cout << "Error after change" << endl;
-                                }
-
-
-                                updateMu(all_forest.trees[curr_tree_counter],data);
-
-                                // Getting predictions
-                                // cout << " Error on Get Predictions" << endl;
-                                getPredictions(all_forest.trees[curr_tree_counter],data,y_j_hat,y_j_test_hat);
-
-                                // Updating the tree
-                                // cout << "Residuals error 2.0"<< endl;
-                                tree_fits_store.col(t) = y_hat;
-                                // cout << "Residuals error 3.0"<< endl;
-                                tree_fits_store_test.col(t) = y_j_test_hat;
-                                // cout << "Residuals error 4.0"<< endl;
-
+                                aux_j_counter++;
 
                         }
 
-                        // Summing over all trees
-                        prediction_train_sum = sum(tree_fits_store,1);
-                        y_mat_hat.col(j) = prediction_train_sum;
 
-                        prediction_test_sum = sum(tree_fits_store_test,1);
-                        y_mat_test_hat.col(j) = prediction_test_sum;
+                        // ============================================
+                        // This step does not iterate over the trees!!!
+                        // ===========================================
+                        y_mj = data.y_mat;
+                        y_mj.shed_col(j);
+                        y_hat_mj = y_mat_hat;
+                        y_hat_mj.shed_col(j);
 
-                }
+                        // Calculating the invertion that gonna be used for the U and V
+                        arma::mat Sigma_mj_mj_inv = arma::inv_sympd(Sigma_mj_mj);
+
+                        // Calculating the current partial U
+                        partial_u = Sigma_mj_j*Sigma_mj_mj_inv*(y_mj-y_hat_mj);
+                        double v = Sigma_j_j - arma::as_scalar(Sigma_j_mj*Sigma_mj_mj_inv*Sigma_mj_j);
+                        data.v_j = v;
+                        data.sigma_mu_j = data.sigma_mu(j);
+
+                        // Updating the tree
+                                for(int t = 0; t<data.n_tree;t++){
+
+                                        // Current tree counter
+                                        curr_tree_counter = t + j*data.n_tree;
+
+                                        // Creating the auxliar prediction vector
+                                        arma::vec y_j_hat(data.y_mat.n_rows,arma::fill::zeros);
+                                        arma::vec y_j_test_hat(data.x_test.n_rows,arma::fill::zeros);
+
+                                        // Updating the partial residuals
+                                        if(data.n_tree>1){
+                                                partial_residuals = data.y_mat.col(j)-sum_exclude_col(tree_fits_store.slice(j),t);
+                                        } else {
+                                                partial_residuals = data.y_mat.col(j);
+                                        }
+
+                                        // Iterating over all trees
+                                        verb = arma::randu(arma::distr_param(0.0,1.0));
+                                        if(all_forest.trees[t]->isLeaf & all_forest.trees[t]->isRoot){
+                                                // verb = arma::randu(arma::distr_param(0.0,0.3));
+                                                verb = 0.1;
+                                        }
+
+
+                                        // Selecting the verb
+                                        if(verb < 0.25){
+                                                data.move_proposal(0)++;
+                                                // cout << " Grow error" << endl;
+                                                grow(all_forest.trees[curr_tree_counter],data,partial_residuals,partial_u);
+                                        } else if(verb>=0.25 & verb <0.5) {
+                                                data.move_proposal(1)++;
+                                                // cout << " Prune error" << endl;
+                                                prune(all_forest.trees[curr_tree_counter], data, partial_residuals,partial_u);
+                                        } else {
+                                                data.move_proposal(2)++;
+                                                // cout << " Change error" << endl;
+                                                change(all_forest.trees[curr_tree_counter], data, partial_residuals,partial_u);
+                                                // std::cout << "Error after change" << endl;
+                                        }
+
+
+                                        updateMu(all_forest.trees[curr_tree_counter],data);
+
+                                        // Getting predictions
+                                        // cout << " Error on Get Predictions" << endl;
+                                        getPredictions(all_forest.trees[curr_tree_counter],data,y_j_hat,y_j_test_hat);
+
+                                        // Updating the tree
+                                        // cout << "Residuals error 2.0"<< endl;
+                                        tree_fits_store.col(t) = y_j_hat;
+                                        // cout << "Residuals error 3.0"<< endl;
+                                        tree_fits_store_test.col(t) = y_j_test_hat;
+                                        // cout << "Residuals error 4.0"<< endl;
+
+
+                                } // End of iterations over "t"
+
+                                // Summing over all trees
+                                prediction_train_sum = sum(tree_fits_store,1);
+                                y_mat_hat.col(j) = prediction_train_sum;
+
+                                prediction_test_sum = sum(tree_fits_store_test,1);
+                                y_mat_test_hat.col(j) = prediction_test_sum;
+
+                }// End of iterations over "j"
 
 
 
                 // std::cout << "Error Tau: " << data.tau<< endl;
                 update_a_j(data);
                 updateSigma(y_mat_hat, data);
+                all_Sigma_post.slice(i) = data.Sigma;
 
                 // std::cout << " All good " << endl;
                 if(i >= n_burn){
@@ -1256,11 +1266,10 @@ Rcpp::List cppbart(arma::mat x_train,
 
         return Rcpp::List::create(y_train_hat_post, //[1]
                                   y_test_hat_post, //[2]
-                                  tau_post, //[3]
-                                  all_tree_post, // [4]
+                                  Sigma_post, //[3]
+                                  all_Sigma_post, // [4]
                                   data.move_proposal, // [5]
-                                  data.move_acceptance,// [6]
-                                  all_tau_post // [7]
+                                  data.move_acceptance //[6]
                                 );
 }
 

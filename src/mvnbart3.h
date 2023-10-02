@@ -43,7 +43,7 @@ struct modelParam {
 
         // Defining the constructor for the model param
         modelParam(arma::mat x_train_,
-                   arma::mat y_mat,
+                   arma::mat y_mat_,
                    arma::mat x_test_,
                    arma::mat x_cut_,
                    int n_tree_,
@@ -51,9 +51,10 @@ struct modelParam {
                    double alpha_,
                    double beta_,
                    double nu_,
-                   arma::vec tau_mu_,
+                   arma::vec sigma_mu_,
                    arma::mat Sigma_,
                    arma::mat S_0_wish_,
+                   arma::vec a_j_vec_,
                    arma::vec A_j_vec_,
                    double n_mcmc_,
                    double n_burn_,
@@ -94,8 +95,7 @@ struct Node {
 
 
      // Leaf parameters
-     arma::vec mu;
-     arma::vec u;
+     double mu;
 
      // Storing sufficient statistics over the nodes
      double log_likelihood = 0.0;
@@ -117,12 +117,12 @@ struct Node {
      void getLimits(); // This function will get previous limit for the current var
      bool isLeft();
      bool isRight();
-     void grow(Node* tree, modelParam &data, arma::vec &curr_res);
-     void prune(Node* tree, modelParam &data, arma::vec&curr_res);
-     void change(Node* tree, modelParam &data, arma::vec&curr_res);
+     void grow(Node* tree, modelParam &data, arma::vec &curr_res, arma::vec &curr_u);
+     void prune(Node* tree, modelParam &data, arma::vec&curr_res, arma::vec &curr_u);
+     void change(Node* tree, modelParam &data, arma::vec&curr_res, arma::vec &curr_u);
 
-     void nodeLogLike(modelParam &data, arma::vec &curr_res);
-     void updateResiduals(modelParam& data, arma::vec &curr_res, arma::mat &curr_u);
+     void nodeLogLike(modelParam &data);
+     void updateResiduals(modelParam& data, arma::vec &curr_res, arma::vec &curr_u);
      void displayCurrNode();
 
      Node(modelParam &data);

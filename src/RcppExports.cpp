@@ -12,39 +12,40 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // cppbart
-Rcpp::List cppbart(arma::mat x_train, arma::vec y_train, arma::mat x_test, arma::mat x_cut, int n_tree, int node_min_size, int n_mcmc, int n_burn, double tau, double mu, double tau_mu, double alpha, double beta, double a_tau, double d_tau, bool stump, bool no_rotation_bool);
-RcppExport SEXP _bart3_cppbart(SEXP x_trainSEXP, SEXP y_trainSEXP, SEXP x_testSEXP, SEXP x_cutSEXP, SEXP n_treeSEXP, SEXP node_min_sizeSEXP, SEXP n_mcmcSEXP, SEXP n_burnSEXP, SEXP tauSEXP, SEXP muSEXP, SEXP tau_muSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP a_tauSEXP, SEXP d_tauSEXP, SEXP stumpSEXP, SEXP no_rotation_boolSEXP) {
+Rcpp::List cppbart(arma::mat x_train, arma::mat y_mat, arma::mat x_test, arma::mat x_cut, int n_tree, int node_min_size, int n_mcmc, int n_burn, arma::mat Sigma_init, arma::vec mu_init, arma::vec sigma_mu, double alpha, double beta, double nu, arma::mat S_0_wish, arma::vec A_j_vec, arma::vec a_j_vec, bool stump);
+RcppExport SEXP _mvnbart3_cppbart(SEXP x_trainSEXP, SEXP y_matSEXP, SEXP x_testSEXP, SEXP x_cutSEXP, SEXP n_treeSEXP, SEXP node_min_sizeSEXP, SEXP n_mcmcSEXP, SEXP n_burnSEXP, SEXP Sigma_initSEXP, SEXP mu_initSEXP, SEXP sigma_muSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP nuSEXP, SEXP S_0_wishSEXP, SEXP A_j_vecSEXP, SEXP a_j_vecSEXP, SEXP stumpSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::mat >::type x_train(x_trainSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type y_train(y_trainSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type y_mat(y_matSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type x_test(x_testSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type x_cut(x_cutSEXP);
     Rcpp::traits::input_parameter< int >::type n_tree(n_treeSEXP);
     Rcpp::traits::input_parameter< int >::type node_min_size(node_min_sizeSEXP);
     Rcpp::traits::input_parameter< int >::type n_mcmc(n_mcmcSEXP);
     Rcpp::traits::input_parameter< int >::type n_burn(n_burnSEXP);
-    Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
-    Rcpp::traits::input_parameter< double >::type mu(muSEXP);
-    Rcpp::traits::input_parameter< double >::type tau_mu(tau_muSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Sigma_init(Sigma_initSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type mu_init(mu_initSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type sigma_mu(sigma_muSEXP);
     Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
     Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
-    Rcpp::traits::input_parameter< double >::type a_tau(a_tauSEXP);
-    Rcpp::traits::input_parameter< double >::type d_tau(d_tauSEXP);
+    Rcpp::traits::input_parameter< double >::type nu(nuSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type S_0_wish(S_0_wishSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type A_j_vec(A_j_vecSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type a_j_vec(a_j_vecSEXP);
     Rcpp::traits::input_parameter< bool >::type stump(stumpSEXP);
-    Rcpp::traits::input_parameter< bool >::type no_rotation_bool(no_rotation_boolSEXP);
-    rcpp_result_gen = Rcpp::wrap(cppbart(x_train, y_train, x_test, x_cut, n_tree, node_min_size, n_mcmc, n_burn, tau, mu, tau_mu, alpha, beta, a_tau, d_tau, stump, no_rotation_bool));
+    rcpp_result_gen = Rcpp::wrap(cppbart(x_train, y_mat, x_test, x_cut, n_tree, node_min_size, n_mcmc, n_burn, Sigma_init, mu_init, sigma_mu, alpha, beta, nu, S_0_wish, A_j_vec, a_j_vec, stump));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_bart3_cppbart", (DL_FUNC) &_bart3_cppbart, 17},
+    {"_mvnbart3_cppbart", (DL_FUNC) &_mvnbart3_cppbart, 18},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_bart3(DllInfo *dll) {
+RcppExport void R_init_mvnbart3(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }
