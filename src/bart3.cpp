@@ -30,14 +30,15 @@ arma::mat sum_exclude_col(arma::mat mat, int exclude_int){
 
 // Initialising the model Param
 modelParam::modelParam(arma::mat x_train_,
-                        arma::mat y_,
+                        arma::mat y_mat_,
                         arma::mat x_test_,
                         arma::mat x_cut_,
                         int n_tree_,
                         int node_min_size_,
                         double alpha_,
                         double beta_,
-                        arma::vec tau_mu_,
+                        double nu_,
+                        arma::vec sigma_mu_,
                         arma::mat Sigma_,
                         arma::vec a_j_vec_,
                         arma::vec A_j_vec_,
@@ -48,14 +49,16 @@ modelParam::modelParam(arma::mat x_train_,
 
         // Assign the variables
         x_train = x_train_;
-        y_mat = y_;
+        y_mat = y_mat_;
         x_test = x_test_;
         xcut = x_cut_;
         n_tree = n_tree_;
         node_min_size = node_min_size_;
         alpha = alpha_;
         beta = beta_;
-        tau_mu = tau_mu_;
+        nu = nu_;
+        sigma_mu = sigma_mu_;
+
         Sigma = Sigma_;
         a_j_vec = a_j_vec_;
         A_j_vec = A_j_vec_;
@@ -899,9 +902,24 @@ void updateMu(Node* tree, modelParam &data){
 
         // Iterating over the terminal nodes and updating the beta values
         for(int i = 0; i < t_nodes.size();i++){
-                t_nodes[i]->mu = R::rnorm((data.tau*t_nodes[i]->r_sum)/(t_nodes[i]->Gamma_j),sqrt(data.v_j/(t_nodes[i]->Gamma_j))) ;
+                t_nodes[i]->mu = R::rnorm((t_nodes[i]->S_j)/(t_nodes[i]->Gamma_j),sqrt(data.v_j/(t_nodes[i]->Gamma_j))) ;
 
         }
+}
+
+void updateSigma(arma::mat &y_mat_hat,
+                 modelParam &data){
+
+        arma::mat S(data.y_mat.n_cols,data.y_mat.n_cols,arma::fill::zeros);
+        arma::mat res_aux(1,data.y_mat.n_cols);
+        for(int i = 0; i < data.y_mat.n_rows; i ++){
+                res_aux = data.y_mat.row(i)-y_mat_hat.row(i);
+                S = S + res_aux*res_aux.t();
+        }
+
+        // Updating sigma
+        data.Sigma = arma::iwishrnd((data.S_0_wish+S),data.nu+data.y_mat.n_rows);
+
 }
 
 
@@ -956,11 +974,17 @@ void getPredictions(Node* tree,
 
 void update_a_j(ModelParam &data){
 
-        double shape_j = data
+        double shape_j = 0.5*(data.y_mat.n_rows+data.nu);
+        arma::mat Precision = arma::inv_sympd(data.Sigma);
 
         // Calcularting shape and scale parameters
         for(int j = 0; j < data.y_mat.n_cols; j++){
+                double scale_j = 1/data.A_j_vec(j)+data.nu*Precision(j,j);
+                data.a_j_vec(j) = 1/Rcpp::rgamma(1,shape_j,scale_j);
+                data.S_0_wish(j,j) = (2*data.nu)/data.a_j_vec(j);
         }
+
+        return;
 }
 
 // Creating the BART function
@@ -976,7 +1000,7 @@ Rcpp::List cppbart(arma::mat x_train,
           arma::mat Sigma_init,
           arma::vec mu_init,
           arma::vec tau_mu,
-          double alpha, double beta,
+          double alpha, double beta, double nu,
           arma:: mat S_0_wish,
           arma:: mat A_j_vec,
           bool stump){
@@ -996,6 +1020,7 @@ Rcpp::List cppbart(arma::mat x_train,
                         node_min_size,
                         alpha,
                         beta,
+                        nu,
                         tau_mu,
                         Sigma_init,
                         S_0_wish,
@@ -1198,20 +1223,14 @@ Rcpp::List cppbart(arma::mat x_train,
 
                 // std::cout << "Error Tau: " << data.tau<< endl;
                 update_a_j(data);
-
-                updateTau(y_mat_hat, data);
-                // std::cout << "New Tau: " << data.tau<< endl;
-                all_tau_post(i) = data.tau;
+                updateSigma(y_mat_hat, data);
 
                 // std::cout << " All good " << endl;
                 if(i >= n_burn){
                         // Storing the predictions
-                        y_train_hat_post.col(curr) = prediction_train_sum;
-                        y_test_hat_post.col(curr) = prediction_test_sum;
-
-
-                        all_tree_post.slice(curr) = tree_fits_store;
-                        tau_post(curr) = data.tau;
+                        y_train_hat_post.slice(curr) = y_mat_hat;
+                        y_test_hat_post.slice(curr) = y_mat_test_hat;
+                        Sigma_post.slice(curr) = data.Sigma;
                         curr++;
                 }
 

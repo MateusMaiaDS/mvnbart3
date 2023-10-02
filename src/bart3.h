@@ -22,8 +22,7 @@ struct modelParam {
         arma::mat S_0_wish;
         arma::vec a_j_vec;
         arma::vec A_j_vec;
-        double a_tau;
-        double d_tau;
+
         double nu;
         int node_min_size;
 
@@ -51,6 +50,7 @@ struct modelParam {
                    int node_min_size_,
                    double alpha_,
                    double beta_,
+                   double nu_,
                    arma::vec tau_mu_,
                    arma::mat Sigma_,
                    arma::mat S_0_wish_,
@@ -103,7 +103,7 @@ struct Node {
      double u_sum = 0.0;
      double Gamma_j;
      double sigma_mu_j_sq;
-     dobule S_j;
+     double S_j;
 
 
      int n_leaf = 0;
