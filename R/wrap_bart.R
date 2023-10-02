@@ -161,7 +161,7 @@ mvnbart3 <- function(x_train,
                           sigma_mu_j,
                           alpha,beta,nu,
                           S_0_wish,
-                          A_j_vec,
+                          A_j,
                           a_j_init,
                           stump)
 

@@ -65,7 +65,4 @@ for (i in 1:N){
      data_test$Q[i] <- (f_true_Q(data_test[i,1:4]) + resid[2]) * 0.1
 }
 
-s0 <- matrix(0,nrow = 10, ncol = 10)
-for(i in 1:10){
-        s0 <- s0 + crossprod(m1[i,,drop = FALSE]-m2[i,,drop = FALSE])
-}
+

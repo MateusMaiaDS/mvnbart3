@@ -24,3 +24,4 @@ prob_tau_b = 0.9
 stump <- FALSE
 numcut <- 100L
 usequants <- FALSE
+node_min_size <- 5

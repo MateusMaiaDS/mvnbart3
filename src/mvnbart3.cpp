@@ -1048,12 +1048,15 @@ Rcpp::List cppbart(arma::mat x_train,
         // Getting the n_post
         int n_post = n_mcmc - n_burn;
 
+        Rcpp::Rcout << "error here" << endl;
+
         // Defining those elements
         arma::cube y_train_hat_post(data.y_mat.n_rows,data.y_mat.n_cols,n_post,arma::fill::zeros);
         arma::cube y_test_hat_post(data.x_test.n_rows,data.y_mat.n_cols,n_post,arma::fill::zeros);
         arma::cube Sigma_post(data.Sigma.n_rows,data.Sigma.n_cols,n_post,arma::fill::zeros);
         arma::cube all_Sigma_post(data.Sigma.n_rows,data.Sigma.n_cols,n_mcmc,arma::fill::zeros);
 
+        Rcpp::Rcout << "error here2" << endl;
 
         // =====================================
         // For the moment I will not store those
@@ -1062,16 +1065,18 @@ Rcpp::List cppbart(arma::mat x_train,
 
 
         // Defining other variables
-        arma::vec partial_pred = arma::mat(data.x_train.n_rows,data.y_mat.n_cols,arma::fill::zeros);
-        arma::vec partial_residuals = arma::mat(data.x_train.n_rows,data.y_mat.n_cols,arma::fill::zeros);
+        // arma::vec partial_pred = arma::mat(data.x_train.n_rows,data.y_mat.n_cols,arma::fill::zeros);
+        arma::vec partial_residuals(data.x_train.n_rows,arma::fill::zeros);
         arma::cube tree_fits_store(data.x_train.n_rows,data.n_tree,data.y_mat.n_cols,arma::fill::zeros);
-        arma::cube tree_fits_store_test(data.x_test.n_rows,data.n_tree,y_mat.n_cols,arma::fill::zeros);
+        arma::cube tree_fits_store_test(data.x_test.n_rows,y_mat.n_cols,data.n_tree,arma::fill::zeros);
 
+        Rcpp::Rcout << "error here3" << endl;
 
         // In case if I need to start with another initial values
         // for(int i = 0 ; i < data.n_tree ; i ++ ){
         //         tree_fits_store.col(i) = partial_pred;
         // }
+
         double verb;
 
         // Defining progress bars parameters
@@ -1111,7 +1116,7 @@ Rcpp::List cppbart(arma::mat x_train,
 
                 // Matrix that store all the predictions for all y
                 arma::mat y_mat_hat(data.x_train.n_rows,data.y_mat.n_cols,arma::fill::zeros);
-                arma::mat y_mat_test_hat(data.x_train.n_rows,data.y_mat.n_cols,arma::fill::zeros);
+                arma::mat y_mat_test_hat(data.x_test.n_rows,data.y_mat.n_cols,arma::fill::zeros);
 
                 // Iterating over the d-dimension MATRICES of the response.
                 for(int j = 0; j < data.y_mat.n_cols; j++){
@@ -1126,23 +1131,37 @@ Rcpp::List cppbart(arma::mat x_train,
 
                         int aux_j_counter = 0;
 
+                        Rcpp::Rcout << "error here 3.5" << endl;
+
                         // Dropping the column with respect to "j"
                         Sigma_mj_mj.shed_row(j);
                         Sigma_mj_mj.shed_col(j);
+
 
                         arma::vec partial_u(data.x_train.n_rows);
                         arma::mat y_mj(data.x_train.n_rows,data.y_mat.n_cols);
                         arma::mat y_hat_mj(data.x_train.n_rows,data.y_mat.n_cols);
 
-                        for(int d = 0; d< data.y_mat.n_cols; d++){
+                        // cout << "Sigma - nrows: "<< Sigma_j_mj.n_rows;
+                        // cout << "Sigma - ncols: "<< Sigma_j_mj.n_cols;
+
+                        for(int d = 0; d < data.y_mat.n_cols; d++){
+
+                                // Rcpp::Rcout <<  "AUX_J: " << data.Sigma(j,d) << endl;
                                 if(d!=j){
                                         Sigma_j_mj(0,aux_j_counter)  = data.Sigma(j,d);
                                         Sigma_mj_j(aux_j_counter,0) = data.Sigma(j,d);
+                                        aux_j_counter = aux_j_counter + 1;
                                 }
-                                aux_j_counter++;
+
+                                // Rcpp::Rcout << " aux_j: " << (data.y_mat.n_cols-1) << endl;
+
+
 
                         }
 
+
+                        Rcpp::Rcout << "error here 3.8" << endl;
 
                         // ============================================
                         // This step does not iterate over the trees!!!
@@ -1156,10 +1175,15 @@ Rcpp::List cppbart(arma::mat x_train,
                         arma::mat Sigma_mj_mj_inv = arma::inv_sympd(Sigma_mj_mj);
 
                         // Calculating the current partial U
-                        partial_u = Sigma_mj_j*Sigma_mj_mj_inv*(y_mj-y_hat_mj);
+                        for(int i_train = 0; i_train < data.y_mat.n_rows;i_train++){
+                                partial_u(i_train) = arma::as_scalar(Sigma_mj_j*Sigma_mj_mj_inv*(y_mj.row(i_train)-y_hat_mj.row(i_train)));
+                        }
+
                         double v = Sigma_j_j - arma::as_scalar(Sigma_j_mj*Sigma_mj_mj_inv*Sigma_mj_j);
                         data.v_j = v;
                         data.sigma_mu_j = data.sigma_mu(j);
+
+                        Rcpp::Rcout << "error here 4" << endl;
 
                         // Updating the tree
                                 for(int t = 0; t<data.n_tree;t++){
