@@ -1,5 +1,4 @@
 library(BART)
-library(mvnbart)
 
 
 # simulate data ####
@@ -19,7 +18,7 @@ f_true_Q <- function(X){
 
 # true covariance matrix for residuals
 sigma_c <- 1
-sigma_q <- 2/3
+sigma_q <- 1
 rho <- 0.8
 Sigma <- matrix(c(sigma_c^2,sigma_c*sigma_q*rho,sigma_c*sigma_q*rho,sigma_q^2), nrow = 2)
 Sigma_chol <- t(chol(Sigma))
@@ -41,9 +40,9 @@ data_train$EQ <- NA
 for (i in 1:N){
      resid <- Sigma_chol %*% rnorm(2)
      data_train$EC[i] <- f_true_C(data_train[i,1:4])
-     data_train$C[i] <- (f_true_C(data_train[i,1:4]) + resid[1]) * 10
+     data_train$C[i] <- (f_true_C(data_train[i,1:4]) + resid[1]) * 1
      data_train$EQ[i] <- f_true_Q(data_train[i,1:4])
-     data_train$Q[i] <- (f_true_Q(data_train[i,1:4]) + resid[2]) * 0.1
+     data_train$Q[i] <- (f_true_Q(data_train[i,1:4]) + resid[2]) * 1
 }
 
 data_test <- data.frame(X1 = rep(NA, N))
@@ -60,9 +59,9 @@ data_test$EQ <- NA
 for (i in 1:N){
      resid <- Sigma_chol %*% rnorm(2)
      data_test$EC[i] <- f_true_C(data_test[i,1:4])
-     data_test$C[i] <- (f_true_C(data_test[i,1:4]) + resid[1]) * 10
+     data_test$C[i] <- (f_true_C(data_test[i,1:4]) + resid[1]) * 1
      data_test$EQ[i] <- f_true_Q(data_test[i,1:4])
-     data_test$Q[i] <- (f_true_Q(data_test[i,1:4]) + resid[2]) * 0.1
+     data_test$Q[i] <- (f_true_Q(data_test[i,1:4]) + resid[2]) * 1
 }
 
 

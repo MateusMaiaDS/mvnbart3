@@ -61,6 +61,7 @@ modelParam::modelParam(arma::mat x_train_,
         sigma_mu = sigma_mu_;
 
         Sigma = Sigma_;
+        S_0_wish = S_0_wish_;
         a_j_vec = a_j_vec_;
         A_j_vec = A_j_vec_;
         n_mcmc = n_mcmc_;
@@ -289,7 +290,7 @@ Forest::Forest(modelParam& data){
 
         // Creatina vector of size of number of trees
         trees.resize(data.n_tree*data.y_mat.n_cols);
-        for(int  i=0;i<data.n_tree;i++){
+        for(int  i=0;i<(data.n_tree*data.y_mat.n_cols);i++){
                 // Creating the stump for each tree
                 trees[i] = new Node(data);
                 // Filling up each stump for each tree
@@ -809,7 +810,7 @@ void change(Node* tree, modelParam &data, arma::vec &curr_res, arma::vec &curr_u
 
         if(arma::randu(arma::distr_param(0.0,1.0))<acceptance){
                 // Keep all the trees
-                data.move_acceptance(3)++;
+                data.move_acceptance(2)++;
         } else {
 
                 // Returning to the previous values
@@ -927,7 +928,7 @@ void updateSigma(arma::mat &y_mat_hat,
         arma::mat res_aux(1,data.y_mat.n_cols);
         for(int i = 0; i < data.y_mat.n_rows; i ++){
                 res_aux = data.y_mat.row(i)-y_mat_hat.row(i);
-                S = S + res_aux*res_aux.t();
+                S = S + res_aux.t()*res_aux;
         }
 
         // Updating sigma
@@ -990,12 +991,17 @@ void update_a_j(modelParam &data){
         double shape_j = 0.5*(data.y_mat.n_rows+data.nu);
         arma::mat Precision = arma::inv_sympd(data.Sigma);
 
+        // Rcpp::Rcout << "a_j_vec is: "<< data.a_j_vec.size() << endl;
+        // Rcpp::Rcout << "A_j_vec is: "<< data.a_j_vec.size() << endl;
+        // Rcpp::Rcout << "S_0_vec is: "<< data.S_0_wish.size() << endl;
+
         // Calcularting shape and scale parameters
         for(int j = 0; j < data.y_mat.n_cols; j++){
                 double scale_j = 1/(data.A_j_vec(j)*data.A_j_vec(j))+data.nu*Precision(j,j);
                 double a_j_vec_double_aux = R::rgamma(shape_j,scale_j);
                 data.a_j_vec(j) = 1/a_j_vec_double_aux;
                 data.S_0_wish(j,j) = (2*data.nu)/data.a_j_vec(j);
+                // Rcpp::Rcout << " Iteration j" << endl;
         }
 
         return;
@@ -1048,7 +1054,7 @@ Rcpp::List cppbart(arma::mat x_train,
         // Getting the n_post
         int n_post = n_mcmc - n_burn;
 
-        Rcpp::Rcout << "error here" << endl;
+        // Rcpp::Rcout << "error here" << endl;
 
         // Defining those elements
         arma::cube y_train_hat_post(data.y_mat.n_rows,data.y_mat.n_cols,n_post,arma::fill::zeros);
@@ -1056,7 +1062,7 @@ Rcpp::List cppbart(arma::mat x_train,
         arma::cube Sigma_post(data.Sigma.n_rows,data.Sigma.n_cols,n_post,arma::fill::zeros);
         arma::cube all_Sigma_post(data.Sigma.n_rows,data.Sigma.n_cols,n_mcmc,arma::fill::zeros);
 
-        Rcpp::Rcout << "error here2" << endl;
+        // Rcpp::Rcout << "error here2" << endl;
 
         // =====================================
         // For the moment I will not store those
@@ -1070,7 +1076,7 @@ Rcpp::List cppbart(arma::mat x_train,
         arma::cube tree_fits_store(data.x_train.n_rows,data.n_tree,data.y_mat.n_cols,arma::fill::zeros);
         arma::cube tree_fits_store_test(data.x_test.n_rows,data.n_tree,y_mat.n_cols,arma::fill::zeros);
 
-        Rcpp::Rcout << "error here3" << endl;
+        // Rcpp::Rcout << "error here3" << endl;
 
         // In case if I need to start with another initial values
         // for(int i = 0 ; i < data.n_tree ; i ++ ){
@@ -1131,7 +1137,7 @@ Rcpp::List cppbart(arma::mat x_train,
 
                         int aux_j_counter = 0;
 
-                        Rcpp::Rcout << "error here 3.5" << endl;
+                        // Rcpp::Rcout << "error here 3.5" << endl;
 
                         // Dropping the column with respect to "j"
                         Sigma_mj_mj.shed_row(j);
@@ -1161,7 +1167,7 @@ Rcpp::List cppbart(arma::mat x_train,
                         }
 
 
-                        Rcpp::Rcout << "error here 3.8" << endl;
+                        // Rcpp::Rcout << "error here 3.8" << endl;
 
                         // ============================================
                         // This step does not iterate over the trees!!!
@@ -1183,14 +1189,15 @@ Rcpp::List cppbart(arma::mat x_train,
                         data.v_j = v;
                         data.sigma_mu_j = data.sigma_mu(j);
 
-                        Rcpp::Rcout << "error here 4" << endl;
+                        // Rcpp::Rcout << "error here 4" << endl;
+
 
                         // Updating the tree
                                 for(int t = 0; t<data.n_tree;t++){
 
                                         // Current tree counter
                                         curr_tree_counter = t + j*data.n_tree;
-
+                                        // cout << "curr_tree_counter value:" << curr_tree_counter << endl;
                                         // Creating the auxliar prediction vector
                                         arma::vec y_j_hat(data.y_mat.n_rows,arma::fill::zeros);
                                         arma::vec y_j_test_hat(data.x_test.n_rows,arma::fill::zeros);
@@ -1204,24 +1211,26 @@ Rcpp::List cppbart(arma::mat x_train,
 
                                         // Iterating over all trees
                                         verb = arma::randu(arma::distr_param(0.0,1.0));
-                                        if(all_forest.trees[t]->isLeaf & all_forest.trees[t]->isRoot){
+
+                                        if(all_forest.trees[curr_tree_counter]->isLeaf & all_forest.trees[curr_tree_counter]->isRoot){
                                                 // verb = arma::randu(arma::distr_param(0.0,0.3));
                                                 verb = 0.1;
                                         }
 
-
                                         // Selecting the verb
                                         if(verb < 0.25){
                                                 data.move_proposal(0)++;
-                                                cout << " Grow error" << endl;
+                                                // cout << " Grow error" << endl;
+                                                // Rcpp::stop("STOP ENTERED INTO A GROW");
                                                 grow(all_forest.trees[curr_tree_counter],data,partial_residuals,partial_u);
                                         } else if(verb>=0.25 & verb <0.5) {
                                                 data.move_proposal(1)++;
-                                                cout << " Prune error" << endl;
+                                                // Rcpp::stop("STOP ENTERED INTO A PRUNE");
+                                                // cout << " Prune error" << endl;
                                                 prune(all_forest.trees[curr_tree_counter], data, partial_residuals,partial_u);
                                         } else {
-                                                data.move_proposal(2)++;
-                                                cout << " Change error" << endl;
+                                                // data.move_proposal(2)++;
+                                                // cout << " Change error" << endl;
                                                 change(all_forest.trees[curr_tree_counter], data, partial_residuals,partial_u);
                                                 // std::cout << "Error after change" << endl;
                                         }
@@ -1230,13 +1239,13 @@ Rcpp::List cppbart(arma::mat x_train,
                                         updateMu(all_forest.trees[curr_tree_counter],data);
 
                                         // Getting predictions
-                                        cout << " Error on Get Predictions" << endl;
+                                        // cout << " Error on Get Predictions" << endl;
                                         getPredictions(all_forest.trees[curr_tree_counter],data,y_j_hat,y_j_test_hat);
 
                                         // Updating the tree
-                                        cout << "Residuals error 2.0"<< endl;
+                                        // cout << "Residuals error 2.0"<< endl;
                                         tree_fits_store.slice(j).col(t) = y_j_hat;
-                                        cout << "Residuals error 3.0"<< endl;
+                                        // cout << "Residuals error 3.0"<< endl;
                                         tree_fits_store_test.slice(j).col(t) = y_j_test_hat;
                                         // cout << "Residuals error 4.0"<< endl;
 

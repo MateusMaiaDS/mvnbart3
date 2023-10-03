@@ -3,6 +3,14 @@ D_gen <- function(p, n_dif){
         return(diff(diag(p),diff = n_dif))
 }
 
+# A fucction to retrive the number which are the factor columns
+base_dummyVars <- function(df) {
+        num_cols <- sapply(df, is.numeric)
+        factor_cols <- sapply(df, is.factor)
+
+        return(list(continuousVars = names(df)[num_cols], facVars = names(df)[factor_cols]))
+}
+
 # Normalize BART function (Same way ONLY THE COVARIATE NOW)
 normalize_covariates_bart <- function(y, a = NULL, b = NULL) {
 

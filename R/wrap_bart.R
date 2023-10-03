@@ -2,13 +2,7 @@
 #' @useDynLib mvnbart3
 #' @importFrom Rcpp sourceCpp
 #'
-# A fucction to retrive the number which are the factor columns
-base_dummyVars <- function(df) {
-        num_cols <- sapply(df, is.numeric)
-        factor_cols <- sapply(df, is.factor)
 
-        return(list(continuousVars = names(df)[num_cols], facVars = names(df)[factor_cols]))
-}
 
 # Getting the BART wrapped function
 #' @export
@@ -132,7 +126,7 @@ mvnbart3 <- function(x_train,
      # Calculating lambda
      A_j <- sapply(nsigma, function(sigma){
              stats::optim(par = 0.01, f = function(A){(sigquant - phalft(sigma, A, nu)^2)},
-                   method = "Brent",lower = 0.00001,upper = 100)$par
+                   method = "Brent",lower = 0.000001,upper = 100)$par
      })
 
      a_j_init <- sapply(A_j,function(A_j_){1/stats::rgamma(n = 1,shape = 2,scale = A_j_^2)})
@@ -172,15 +166,27 @@ mvnbart3 <- function(x_train,
              y_test_post <- unnormalize_bart(z = bart_obj[[2]],a = min_y,b = max_y)
 
              Sigma <- bart_obj[[3]]/((max_y-min_y)^2)
-             all_Sigma_post <- bart_obj[[7]]/((max_y-min_y)^2)
+             all_Sigma_post <- bart_obj[[4]]/((max_y-min_y)^2)
      } else {
              y_train_post <- bart_obj[[1]]
              y_test_post <- bart_obj[[2]]
              Sigma_post <- bart_obj[[3]]
-             all_Sigma_post <- bart_obj[[7]]
+             all_Sigma_post <- bart_obj[[4]]
+     }
 
+     par(mfrow=c(1,2))
+     y_train_post %>% apply(c(1,2),mean) %>% .[,1] %>% plot(.,y_mat[,1])
+     y_train_post %>% apply(c(1,2),mean) %>% .[,2] %>% plot(.,y_mat[,2])
+
+
+     sigma_one <- sigma_two <- numeric()
+     for(i in 1:(dim(Sigma_post)[3])){
+             sigma_one[i] <- Sigma_post[1,1,i]
+             sigma_two[i] <- Sigma_post[2,2,i]
 
      }
+     sigma_one %>% plot(type = 'l')
+     sigma_two %>% plot(type = 'l')
 
      # Return the list with all objects and parameters
      return(list(y_hat = y_train_post,
@@ -194,7 +200,9 @@ mvnbart3 <- function(x_train,
                               tau_mu_j = tau_mu_j,
                               df = df,
                               A_j = A_j,
-                              mu_init = mu_init),
+                              mu_init = mu_init,
+                              tree_proposal = bart_obj[[5]],
+                              tree_acceptance = bart_obj[[6]]),
                  mcmc = list(n_mcmc = n_mcmc,
                              n_burn = n_burn),
                  data = list(x_train = x_train,
