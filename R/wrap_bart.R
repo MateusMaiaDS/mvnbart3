@@ -123,19 +123,25 @@ mvnbart3 <- function(x_train,
      # Define parameters
      nu <- df
 
+     A_j <- numeric()
+
+     for(i in 1:length(nsigma)){
+             # Calculating lambda
+             A_j[i] <- stats::optim(par = 0.01, f = function(A){(sigquant - phalft(nsigma[i], A, nu)^2)},
+                           method = "Brent",lower = 0.00001,upper = 100)$par
+     }
+
      # Calculating lambda
-     A_j <- sapply(nsigma, function(sigma){
-             stats::optim(par = 0.01, f = function(A){(sigquant - phalft(sigma, A, nu)^2)},
-                   method = "Brent",lower = 0.000001,upper = 100)$par
-     })
+     qchi <- stats::qchisq(p = 1-sigquant,df = df,lower.tail = 1,ncp = 0)
+     lambda <- (nsigma*nsigma*qchi)/df
+     a_j_init <- (lambda*df)/2
 
-     a_j_init <- sapply(A_j,function(A_j_){1/stats::rgamma(n = 1,shape = 2,scale = A_j_^2)})
-
-     S_0_wish <- 2*nu*diag(1/a_j_init)
+     S_0_wish <- diag(1/a_j_init)/(2*nu)
 
      # Call the bart function
-     Sigma_init <- diag(nsigma)
+     Sigma_init <- diag(nsigma^2)
 
+     Sigma_init <- Sigma
      mu_init <- apply(y_mat,2,mean)
 
      # Creating the vector that stores all trees
@@ -174,19 +180,30 @@ mvnbart3 <- function(x_train,
              all_Sigma_post <- bart_obj[[4]]
      }
 
-     par(mfrow=c(1,2))
-     y_train_post %>% apply(c(1,2),mean) %>% .[,1] %>% plot(.,y_mat[,1])
-     y_train_post %>% apply(c(1,2),mean) %>% .[,2] %>% plot(.,y_mat[,2])
+     # par(mfrow=c(1,2))
+     # y_train_post %>% apply(c(1,2),mean) %>% .[,1] %>% plot(.,y_mat[,1])
+     # y_train_post %>% apply(c(1,2),mean) %>% .[,2] %>% plot(.,y_mat[,2])
+     #
+     #
+     # rho <- sigma_one <- sigma_two <- numeric()
+     # for(i in 1:(dim(Sigma_post)[3])){
+     #         sigma_one[i] <- Sigma_post[1,1,i]
+     #         sigma_two[i] <- Sigma_post[2,2,i]
+     #         rho[i] <- Sigma_post[1,2,i]/(sqrt(sigma_one[i])*sqrt(sigma_two[i]))
+     #
+     # }
+     # sigma_one %>% plot(type = 'l')
+     # sigma_two %>% plot(type = 'l')
+     # rho %>% plot(type = "l")
+     #
+     #
+     # #test univariate abrt
+     # dbarts_mod <- dbarts::bart(x.train = x_train_scale,y.train = y_mat[,1],x.test = x_test_scale)
+     # plot(y_train_post %>% apply(c(1,2),mean) %>% .[,1],dbarts_mod$yhat.train.mean)
+     #
+     # y_train_post %>% apply(c(1,2),mean) %>% .[,1] %>% rmse(.,y_mat[,1])
+     # dbarts_mod$yhat.train.mean %>% rmse(.,y_mat[,1])
 
-
-     sigma_one <- sigma_two <- numeric()
-     for(i in 1:(dim(Sigma_post)[3])){
-             sigma_one[i] <- Sigma_post[1,1,i]
-             sigma_two[i] <- Sigma_post[2,2,i]
-
-     }
-     sigma_one %>% plot(type = 'l')
-     sigma_two %>% plot(type = 'l')
 
      # Return the list with all objects and parameters
      return(list(y_hat = y_train_post,

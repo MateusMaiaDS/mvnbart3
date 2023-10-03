@@ -591,12 +591,6 @@ void change(Node* tree, modelParam &data, arma::vec &curr_res, arma::vec &curr_u
         // Selecting one node to be sampled
         Node* c_node = sample_node(nog_nodes);
 
-        // In the case of an empty node
-        if(c_node->n_leaf==0){
-                return;
-                // c_node->left->updateResiduals(data,curr_res);
-                // c_node->right->updateResiduals(data,curr_res);
-        }
 
         if(c_node->isRoot){
                 // cout << " THAT NEVER HAPPENS" << endl;
@@ -989,7 +983,7 @@ void getPredictions(Node* tree,
 void update_a_j(modelParam &data){
 
         double shape_j = 0.5*(data.y_mat.n_rows+data.nu);
-        arma::mat Precision = arma::inv_sympd(data.Sigma);
+        arma::mat Precision = arma::inv(data.Sigma);
 
         // Rcpp::Rcout << "a_j_vec is: "<< data.a_j_vec.size() << endl;
         // Rcpp::Rcout << "A_j_vec is: "<< data.a_j_vec.size() << endl;
@@ -1129,8 +1123,8 @@ Rcpp::List cppbart(arma::mat x_train,
 
 
                         arma::mat Sigma_j_mj(1,(data.y_mat.n_cols-1),arma::fill::zeros);
-                        arma::mat Sigma_mj_mj = data.Sigma;
                         arma::mat Sigma_mj_j((data.y_mat.n_cols-1),1,arma::fill::zeros);
+                        arma::mat Sigma_mj_mj = data.Sigma;
 
 
                         double Sigma_j_j = data.Sigma(j,j);
@@ -1178,7 +1172,7 @@ Rcpp::List cppbart(arma::mat x_train,
                         y_hat_mj.shed_col(j);
 
                         // Calculating the invertion that gonna be used for the U and V
-                        arma::mat Sigma_mj_mj_inv = arma::inv_sympd(Sigma_mj_mj);
+                        arma::mat Sigma_mj_mj_inv = arma::inv(Sigma_mj_mj);
 
                         // Calculating the current partial U
                         for(int i_train = 0; i_train < data.y_mat.n_rows;i_train++){
@@ -1229,7 +1223,7 @@ Rcpp::List cppbart(arma::mat x_train,
                                                 // cout << " Prune error" << endl;
                                                 prune(all_forest.trees[curr_tree_counter], data, partial_residuals,partial_u);
                                         } else {
-                                                // data.move_proposal(2)++;
+                                                data.move_proposal(2)++;
                                                 // cout << " Change error" << endl;
                                                 change(all_forest.trees[curr_tree_counter], data, partial_residuals,partial_u);
                                                 // std::cout << "Error after change" << endl;
