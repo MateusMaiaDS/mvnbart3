@@ -16,9 +16,7 @@ beta = 2
 df = 3
 sigquant = 0.9
 kappa = 2
-scale_bool = FALSE
 # Hyperparam for tau_b and tau_b_0
-stump <- FALSE
 numcut <- 100L
 usequants <- FALSE
 node_min_size <- 5

@@ -2,14 +2,12 @@
 #' @useDynLib mvnbart3
 #' @importFrom Rcpp sourceCpp
 #'
-
-
 # Getting the BART wrapped function
 #' @export
 mvnbart3 <- function(x_train,
                   y_mat,
                   x_test,
-                  n_tree = 2,
+                  n_tree = 100,
                   node_min_size = 5,
                   n_mcmc = 2000,
                   n_burn = 500,
@@ -18,10 +16,6 @@ mvnbart3 <- function(x_train,
                   df = 3,
                   sigquant = 0.9,
                   kappa = 2,
-                  tau = 100,
-                  scale_bool = FALSE,
-                  stump = FALSE,
-                  no_rotation_bool = FALSE,
                   numcut = 100L, # Defining the grid of split rules
                   usequants = FALSE
                   ) {
@@ -37,8 +31,6 @@ mvnbart3 <- function(x_train,
      }
 
 
-
-
      # Getting the valid
      dummy_x <- base_dummyVars(x_train)
 
@@ -46,12 +38,16 @@ mvnbart3 <- function(x_train,
 
      # Create a list
      if(length(dummy_x$facVars)!=0){
+
+             # Selected rank_var categorical
+             rank_var <- 1
+
              for(i in 1:length(dummy_x$facVars)){
                      # See if the levels of the test and train matches
                      if(!all(levels(x_train[[dummy_x$facVars[i]]])==levels(x_test[[dummy_x$facVars[i]]]))){
                         levels(x_test[[dummy_x$facVars[[i]]]]) <- levels(x_train[[dummy_x$facVars[[i]]]])
                      }
-                     df_aux <- data.frame( x = x_train[,dummy_x$facVars[i]],y)
+                     df_aux <- data.frame( x = x_train[,dummy_x$facVars[i]], y = y_mat[,rank_var])
                      formula_aux <- stats::aggregate(y~x,df_aux,mean)
                      formula_aux$y <- rank(formula_aux$y)
                      x_train[[dummy_x$facVars[i]]] <- as.numeric(factor(x_train[[dummy_x$facVars[[i]]]], labels = c(formula_aux$y)))-1
@@ -140,12 +136,8 @@ mvnbart3 <- function(x_train,
 
      # Call the bart function
      Sigma_init <- diag(nsigma^2)
-
-     Sigma_init <- Sigma
      mu_init <- apply(y_mat,2,mean)
 
-     # Creating the vector that stores all trees
-     all_tree_post <- vector("list",length = round(n_mcmc-n_burn))
 
      # Generating the BART obj
      bart_obj <- cppbart(x_train_scale,
@@ -162,55 +154,41 @@ mvnbart3 <- function(x_train,
                           alpha,beta,nu,
                           S_0_wish,
                           A_j,
-                          a_j_init,
-                          stump)
+                          a_j_init)
 
 
-     if(scale_bool){
-             # Tidying up the posterior elements
-             y_train_post <- unnormalize_bart(z = bart_obj[[1]],a = min_y,b = max_y)
-             y_test_post <- unnormalize_bart(z = bart_obj[[2]],a = min_y,b = max_y)
+     # Returning the main components from the model
+     y_train_post <- bart_obj[[1]]
+     y_test_post <- bart_obj[[2]]
+     Sigma_post <- bart_obj[[3]]
+     all_Sigma_post <- bart_obj[[4]]
 
-             Sigma <- bart_obj[[3]]/((max_y-min_y)^2)
-             all_Sigma_post <- bart_obj[[4]]/((max_y-min_y)^2)
-     } else {
-             y_train_post <- bart_obj[[1]]
-             y_test_post <- bart_obj[[2]]
-             Sigma_post <- bart_obj[[3]]
-             all_Sigma_post <- bart_obj[[4]]
+
+     # Getting the mean values for the Sigma and \y_hat and \y_hat_test
+     Sigma_for <- matrix(0,nrow = nrow(Sigma_post), ncol = ncol(Sigma_post))
+     y_train_for <- matrix(0,nrow = nrow(y_mat),ncol = ncol(y_mat))
+     y_test_for <- matrix(0,nrow = nrow(x_test),ncol = ncol(y_mat))
+
+     for(i in 1:(dim(Sigma_post)[3])){
+             Sigma_for <- Sigma_for + Sigma_post[,,i]
+             y_train_for <- y_train_for + y_train_post[,,i]
+             y_test_for <- y_test_for + y_test_post[,,i]
      }
 
-     # par(mfrow=c(1,2))
-     # y_train_post %>% apply(c(1,2),mean) %>% .[,1] %>% plot(.,y_mat[,1])
-     # y_train_post %>% apply(c(1,2),mean) %>% .[,2] %>% plot(.,y_mat[,2])
-     #
-     #
-     # rho <- sigma_one <- sigma_two <- numeric()
-     # for(i in 1:(dim(Sigma_post)[3])){
-     #         sigma_one[i] <- Sigma_post[1,1,i]
-     #         sigma_two[i] <- Sigma_post[2,2,i]
-     #         rho[i] <- Sigma_post[1,2,i]/(sqrt(sigma_one[i])*sqrt(sigma_two[i]))
-     #
-     # }
-     # sigma_one %>% plot(type = 'l')
-     # sigma_two %>% plot(type = 'l')
-     # rho %>% plot(type = "l")
-     #
-     #
-     # #test univariate abrt
-     # dbarts_mod <- dbarts::bart(x.train = x_train_scale,y.train = y_mat[,1],x.test = x_test_scale)
-     # plot(y_train_post %>% apply(c(1,2),mean) %>% .[,1],dbarts_mod$yhat.train.mean)
-     #
-     # y_train_post %>% apply(c(1,2),mean) %>% .[,1] %>% rmse(.,y_mat[,1])
-     # dbarts_mod$yhat.train.mean %>% rmse(.,y_mat[,1])
-
+     Sigma_post_mean <- Sigma_for/dim(Sigma_post)[3]
+     y_mat_mean <- y_train_for/dim(y_train_post)[3]
+     y_mat_test_mean <- y_test_for/dim(y_test_post)[3]
+     sigmas_mean <- sqrt(diag(Sigma_post_mean))
 
      # Return the list with all objects and parameters
      return(list(y_hat = y_train_post,
                  y_hat_test = y_test_post,
+                 y_mat_mean = y_mat_mean,
+                 y_mat_test_mean = y_mat_test_mean,
                  Sigma_post = Sigma_post,
+                 Sigma_post_mean = Sigma_post_mean,
+                 sigmas_mean = sigmas_mean,
                  all_Sigma_post = all_Sigma_post,
-                 all_tree_post = all_tree_post,
                  prior = list(n_tree = n_tree,
                               alpha = alpha,
                               beta = beta,

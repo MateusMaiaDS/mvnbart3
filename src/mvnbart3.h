@@ -34,9 +34,6 @@ struct modelParam {
         arma::vec move_proposal;
         arma::vec move_acceptance;
 
-        // Create a boolean to only use stumps
-        bool stump;
-
         // Elements to be used in the loglikelihood update and mu update
         double v_j;
         double sigma_mu_j;
@@ -57,8 +54,7 @@ struct modelParam {
                    arma::vec a_j_vec_,
                    arma::vec A_j_vec_,
                    double n_mcmc_,
-                   double n_burn_,
-                   bool stump_);
+                   double n_burn_);
 
 };
 

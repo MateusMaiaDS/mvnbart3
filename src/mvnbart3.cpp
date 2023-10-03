@@ -44,8 +44,7 @@ modelParam::modelParam(arma::mat x_train_,
                         arma::vec a_j_vec_,
                         arma::vec A_j_vec_,
                         double n_mcmc_,
-                        double n_burn_,
-                        bool stump_){
+                        double n_burn_){
 
 
         // Assign the variables
@@ -70,8 +69,6 @@ modelParam::modelParam(arma::mat x_train_,
         // Grow acceptation ratio
         move_proposal = arma::vec(3,arma::fill::zeros);
         move_acceptance = arma::vec(3,arma::fill::zeros);
-
-        stump = stump_; // Checking if only restrict the model to stumps
 
 }
 
@@ -208,18 +205,7 @@ void Node::getLimits(){
 }
 
 
-void Node::displayCurrNode(){
 
-                std::cout << "Node address: " << this << std::endl;
-                std::cout << "Node parent: " << parent << std::endl;
-
-                std::cout << "Cur Node is leaf: " << isLeaf << std::endl;
-                std::cout << "Cur Node is root: " << isRoot << std::endl;
-                std::cout << "Cur The split_var is: " << var_split << std::endl;
-                std::cout << "Cur The split_var_rule is: " << var_split_rule << std::endl;
-
-                return;
-}
 
 
 void Node::deletingLeaves(){
@@ -497,9 +483,6 @@ void grow(Node* tree, modelParam &data, arma::vec &curr_res, arma::vec& curr_u){
         // Calculating the acceptance ratio
         double acceptance = exp(new_tree_log_like  + log_transition_prob + tree_prior);
 
-        if(data.stump){
-                acceptance = acceptance*(-1);
-        }
 
         // Keeping the new tree or not
         if(arma::randu(arma::distr_param(0.0,1.0)) < acceptance){
@@ -946,7 +929,7 @@ void getPredictions(Node* tree,
 
                 // Skipping empty nodes
                 if(t_nodes[i]->n_leaf==0){
-                        cout << " THERE ARE EMPTY NODES" << endl;
+                        Rcpp::Rcout << " THERE ARE EMPTY NODES" << endl;
                         continue;
                 }
 
@@ -1017,8 +1000,7 @@ Rcpp::List cppbart(arma::mat x_train,
           double alpha, double beta, double nu,
           arma::mat S_0_wish,
           arma::vec A_j_vec,
-          arma::vec a_j_vec,
-          bool stump){
+          arma::vec a_j_vec){
 
         // Posterior counter
         int curr = 0;
@@ -1042,8 +1024,7 @@ Rcpp::List cppbart(arma::mat x_train,
                         A_j_vec,
                         a_j_vec,
                         n_mcmc,
-                        n_burn,
-                        stump);
+                        n_burn);
 
         // Getting the n_post
         int n_post = n_mcmc - n_burn;
@@ -1095,19 +1076,19 @@ Rcpp::List cppbart(arma::mat x_train,
         for(int i = 0;i<data.n_mcmc;i++){
 
                 // Initialising PB
-                std::cout << "[";
+                Rcpp::Rcout << "[";
                 int k = 0;
                 // Evaluating progress bar
                 for(;k<=pb*width/data.n_mcmc;k++){
-                        std::cout << "=";
+                        Rcpp::Rcout << "=";
                 }
 
                 for(; k < width;k++){
-                        std:: cout << " ";
+                        Rcpp::Rcout << " ";
                 }
 
-                std::cout << "] " << std::setprecision(5) << (pb/data.n_mcmc)*100 << "%\r";
-                std::cout.flush();
+                Rcpp::Rcout << "] " << std::setprecision(5) << (pb/data.n_mcmc)*100 << "%\r";
+                Rcpp::Rcout.flush();
 
 
                 // Getting zeros
@@ -1275,21 +1256,21 @@ Rcpp::List cppbart(arma::mat x_train,
 
         }
         // Initialising PB
-        std::cout << "[";
+        Rcpp::Rcout << "[";
         int k = 0;
         // Evaluating progress bar
         for(;k<=pb*width/data.n_mcmc;k++){
-                std::cout << "=";
+                Rcpp::Rcout << "=";
         }
 
         for(; k < width;k++){
-                std:: cout << " ";
+                Rcpp::Rcout << " ";
         }
 
-        std::cout << "] " << std::setprecision(5) << 100 << "%\r";
-        std::cout.flush();
+        Rcpp::Rcout << "] " << std::setprecision(5) << 100 << "%\r";
+        Rcpp::Rcout.flush();
 
-        std::cout << std::endl;
+        Rcpp::Rcout << std::endl;
 
         return Rcpp::List::create(y_train_hat_post, //[1]
                                   y_test_hat_post, //[2]
