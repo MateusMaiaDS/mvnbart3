@@ -993,7 +993,7 @@ void update_a_j(modelParam &data){
         for(int j = 0; j < data.y_mat.n_cols; j++){
                 double scale_j = 1/(data.A_j_vec(j)*data.A_j_vec(j))+data.nu*Precision(j,j);
                 double a_j_vec_double_aux = R::rgamma(shape_j,scale_j);
-                data.a_j_vec(j) = 1/a_j_vec_double_aux;
+                data.a_j_vec(j) = a_j_vec_double_aux;
                 data.S_0_wish(j,j) = (2*data.nu)/data.a_j_vec(j);
                 // Rcpp::Rcout << " Iteration j" << endl;
         }

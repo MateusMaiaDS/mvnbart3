@@ -19,7 +19,7 @@ mvnbart3 <- function(x_train,
                   sigquant = 0.9,
                   kappa = 2,
                   tau = 100,
-                  scale_bool = TRUE,
+                  scale_bool = FALSE,
                   stump = FALSE,
                   no_rotation_bool = FALSE,
                   numcut = 100L, # Defining the grid of split rules
