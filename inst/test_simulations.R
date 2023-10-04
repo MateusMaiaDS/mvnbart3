@@ -19,7 +19,7 @@ f_true_Q <- function(X){
 
 # true covariance matrix for residuals
 sigma_c <- 10
-sigma_q <- 0.1
+sigma_q <- 10
 rho <- 0.5
 Sigma <- matrix(c(sigma_c^2,sigma_c*sigma_q*rho,sigma_c*sigma_q*rho,sigma_q^2), nrow = 2)
 Sigma_chol <- t(chol(Sigma))
@@ -74,7 +74,7 @@ colnames(y_mat) <- c("C","Q")
 mvbart_mod <- mvnbart3(x_train = x_train,
                    y_mat = y_mat,
                    x_test = x_test,
-                   n_tree = 100,
+                   n_tree = 200,
                    n_mcmc = 2500,df = 3,
                    n_burn = 500,Sigma_init = Sigma)
 
@@ -99,3 +99,8 @@ rmse(q_hat$yhat.train.mean,mvbart_mod$y_mat_mean[,2])
 
 crossprod((y_mat-mvbart_mod$y_mat_mean))
 sum((y_mat[,1]-mvbart_mod$y_mat_mean[,1])*(y_mat[,2]-mvbart_mod$y_mat_mean[,2]))
+
+sigma_one <- numeric()
+for(i in 1:dim(mvbart_mod$all_Sigma_post)[3]){
+        sigma_one[i] <- sqrt(mvbart_mod$all_Sigma_post[1,1,i])
+}

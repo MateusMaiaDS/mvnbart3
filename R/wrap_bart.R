@@ -128,9 +128,8 @@ mvnbart3 <- function(x_train,
      # Calculating lambda
      qchi <- stats::qchisq(p = 1-sigquant,df = df,lower.tail = 1,ncp = 0)
      lambda <- (nsigma*nsigma*qchi)/df
-     a_j_init <- (lambda*df)/2
-
-     S_0_wish <- diag(1/a_j_init)/(2*nu)
+     rate_tau <- (lambda*df)/2
+     S_0_wish <- 2*df*diag(c(rate_tau))
 
      # Call the bart function
      if(is.null(Sigma_init)){
@@ -154,8 +153,7 @@ mvnbart3 <- function(x_train,
                           sigma_mu_j,
                           alpha,beta,nu,
                           S_0_wish,
-                          A_j,
-                          a_j_init)
+                          A_j)
 
 
      # Returning the main components from the model

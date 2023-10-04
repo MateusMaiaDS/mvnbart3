@@ -41,7 +41,6 @@ modelParam::modelParam(arma::mat x_train_,
                         arma::vec sigma_mu_,
                         arma::mat Sigma_,
                         arma::mat S_0_wish_,
-                        arma::vec a_j_vec_,
                         arma::vec A_j_vec_,
                         double n_mcmc_,
                         double n_burn_){
@@ -61,8 +60,8 @@ modelParam::modelParam(arma::mat x_train_,
 
         Sigma = Sigma_;
         S_0_wish = S_0_wish_;
-        a_j_vec = a_j_vec_;
         A_j_vec = A_j_vec_;
+        a_j_vec = arma::vec(y_mat_.n_cols,arma::fill::zeros);
         n_mcmc = n_mcmc_;
         n_burn = n_burn_;
 
@@ -996,8 +995,7 @@ Rcpp::List cppbart(arma::mat x_train,
           arma::vec sigma_mu,
           double alpha, double beta, double nu,
           arma::mat S_0_wish,
-          arma::vec A_j_vec,
-          arma::vec a_j_vec){
+          arma::vec A_j_vec){
 
         // Posterior counter
         int curr = 0;
@@ -1019,7 +1017,6 @@ Rcpp::List cppbart(arma::mat x_train,
                         Sigma_init,
                         S_0_wish,
                         A_j_vec,
-                        a_j_vec,
                         n_mcmc,
                         n_burn);
 

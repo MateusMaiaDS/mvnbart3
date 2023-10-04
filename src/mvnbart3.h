@@ -51,7 +51,6 @@ struct modelParam {
                    arma::vec sigma_mu_,
                    arma::mat Sigma_,
                    arma::mat S_0_wish_,
-                   arma::vec a_j_vec_,
                    arma::vec A_j_vec_,
                    double n_mcmc_,
                    double n_burn_);
