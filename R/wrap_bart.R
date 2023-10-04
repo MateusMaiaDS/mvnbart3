@@ -111,7 +111,7 @@ mvnbart3 <- function(x_train,
 
      # Define the ensity function
      phalft <- function(x, A, nu){
-             2 * pt(x/A, nu) – 1
+             return(2 * pt(x/A, nu) - 1)
      }
 
      # Define parameters

@@ -75,7 +75,7 @@ mvbart_mod <- mvnbart3(x_train = x_train,
                    y_mat = y_mat,
                    x_test = x_test,
                    n_tree = 100,
-                   n_mcmc = 2500,df = 5,
+                   n_mcmc = 2500,df = 3,
                    n_burn = 500,Sigma_init = Sigma)
 
 
