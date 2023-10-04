@@ -20,7 +20,7 @@ f_true_Q <- function(X){
 # true covariance matrix for residuals
 sigma_c <- 10
 sigma_q <- 0.1
-rho <- 0.1
+rho <- 0.5
 Sigma <- matrix(c(sigma_c^2,sigma_c*sigma_q*rho,sigma_c*sigma_q*rho,sigma_q^2), nrow = 2)
 Sigma_chol <- t(chol(Sigma))
 
@@ -79,18 +79,19 @@ mvbart_mod <- mvnbart3(x_train = x_train,
                    n_burn = 500,Sigma_init = Sigma)
 
 
-mvbart_mod$Sigma_post_mean
+# mvbart_mod$Sigma_post_mean %>% sqrt
 mvbart_mod$Sigma_post_mean[1,2]/((sqrt(mvbart_mod$Sigma_post_mean[1,1])*sqrt(mvbart_mod$Sigma_post_mean[2,2])))
 plot(y_mat[,2],mvbart_mod$y_mat_mean[,2])
 plot(y_mat[,1],mvbart_mod$y_mat_mean[,1])
 
 # Getting univariate predictions and comparing it with BART
-c_hat <- dbarts::bart(x.train = x_train,y.train = y_mat[,1],x.test = x_test)
-q_hat <- dbarts::bart(x.train = x_train,y.train = y_mat[,2],x.test = x_test)
+c_hat <- dbarts::bart(x.train = x_train,y.train = y_mat[,1],x.test = x_test,ntree = 100)
+q_hat <- dbarts::bart(x.train = x_train,y.train = y_mat[,2],x.test = x_test,ntree = 100)
 
 plot(q_hat$yhat.train.mean,y_mat[,2])
 plot(c_hat$yhat.train.mean,mvbart_mod$y_mat_mean[,1])
 plot(q_hat$yhat.train.mean,mvbart_mod$y_mat_mean[,2])
+plot(y_mat[,2],mvbart_mod$y_mat_mean[,2])
 
 rmse(c_hat$yhat.train.mean,mvbart_mod$y_mat_mean[,1])
 rmse(q_hat$yhat.train.mean,mvbart_mod$y_mat_mean[,2])
