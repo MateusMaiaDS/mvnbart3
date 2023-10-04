@@ -902,11 +902,8 @@ void updateSigma(arma::mat &y_mat_hat,
                  modelParam &data){
 
         arma::mat S(data.y_mat.n_cols,data.y_mat.n_cols,arma::fill::zeros);
-        arma::mat res_aux(1,data.y_mat.n_cols);
-        for(int i = 0; i < data.y_mat.n_rows; i ++){
-                res_aux = data.y_mat.row(i)-y_mat_hat.row(i);
-                S = S + res_aux.t()*res_aux;
-        }
+        arma::mat residuals_mat = y_mat_hat-data.y_mat;
+        S = residuals_mat.t()*residuals_mat;
 
         // Updating sigma
         data.Sigma = arma::iwishrnd((data.S_0_wish+S),data.nu+data.y_mat.n_rows);
@@ -975,8 +972,8 @@ void update_a_j(modelParam &data){
         // Calcularting shape and scale parameters
         for(int j = 0; j < data.y_mat.n_cols; j++){
                 double scale_j = 1/(data.A_j_vec(j)*data.A_j_vec(j))+data.nu*Precision(j,j);
-                double a_j_vec_double_aux = R::rgamma(shape_j,scale_j);
-                data.a_j_vec(j) = a_j_vec_double_aux;
+                double a_j_vec_double_aux = R::rgamma(shape_j,1/scale_j);
+                data.a_j_vec(j) = 1/a_j_vec_double_aux;
                 data.S_0_wish(j,j) = (2*data.nu)/data.a_j_vec(j);
                 // Rcpp::Rcout << " Iteration j" << endl;
         }

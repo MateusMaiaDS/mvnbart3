@@ -17,7 +17,8 @@ mvnbart3 <- function(x_train,
                   sigquant = 0.9,
                   kappa = 2,
                   numcut = 100L, # Defining the grid of split rules
-                  usequants = FALSE
+                  usequants = FALSE,
+                  Sigma_init = NULL
                   ) {
 
      # Verifying if it's been using a y_mat matrix
@@ -110,10 +111,7 @@ mvnbart3 <- function(x_train,
 
      # Define the ensity function
      phalft <- function(x, A, nu){
-             f <- function(x){
-                     2 * gamma((nu + 1)/2)/(gamma(nu/2)*sqrt(nu * pi * A^2)) * (1 + (x^2)/(nu * A^2))^(- (nu + 1)/2)
-             }
-             stats::integrate(f, lower = 0, upper = x)$value
+             2 * pt(x/A, nu) – 1
      }
 
      # Define parameters
@@ -135,7 +133,10 @@ mvnbart3 <- function(x_train,
      S_0_wish <- diag(1/a_j_init)/(2*nu)
 
      # Call the bart function
-     Sigma_init <- diag(nsigma^2)
+     if(is.null(Sigma_init)){
+             Sigma_init <- diag(nsigma^2)
+     }
+
      mu_init <- apply(y_mat,2,mean)
 
 

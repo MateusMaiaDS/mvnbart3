@@ -1,6 +1,7 @@
 library(BART)
-library(mvnbart3)
-
+# library(mvnbart3)
+rm(list=ls())
+load_all()
 # simulate data ####
 
 # true regression functions
@@ -65,16 +66,35 @@ for (i in 1:N){
 }
 
 # Getting y_mat element
+y_mat <- cbind(data_train$C,data_train$Q)
+x_train <- data_train[,1:4]
+x_test <- data_test[,1:4]
 colnames(y_mat) <- c("C","Q")
 
-mvbart_mod <- mvnbart3::mvnbart3(x_train = x_train,
+mvbart_mod <- mvnbart3(x_train = x_train,
                    y_mat = y_mat,
                    x_test = x_test,
                    n_tree = 100,
-                   n_mcmc = 2500,
-                   n_burn = 500)
+                   n_mcmc = 2500,df = 5,
+                   n_burn = 500,Sigma_init = Sigma)
 
 
 mvbart_mod$Sigma_post_mean
 mvbart_mod$Sigma_post_mean[1,2]/((sqrt(mvbart_mod$Sigma_post_mean[1,1])*sqrt(mvbart_mod$Sigma_post_mean[2,2])))
+plot(y_mat[,2],mvbart_mod$y_mat_mean[,2])
+plot(y_mat[,1],mvbart_mod$y_mat_mean[,1])
 
+# Getting univariate predictions and comparing it with BART
+c_hat <- dbarts::bart(x.train = x_train,y.train = y_mat[,1],x.test = x_test)
+q_hat <- dbarts::bart(x.train = x_train,y.train = y_mat[,2],x.test = x_test)
+
+plot(q_hat$yhat.train.mean,y_mat[,2])
+plot(c_hat$yhat.train.mean,mvbart_mod$y_mat_mean[,1])
+plot(q_hat$yhat.train.mean,mvbart_mod$y_mat_mean[,2])
+
+rmse(c_hat$yhat.train.mean,mvbart_mod$y_mat_mean[,1])
+rmse(q_hat$yhat.train.mean,mvbart_mod$y_mat_mean[,2])
+
+
+crossprod((y_mat-mvbart_mod$y_mat_mean))
+sum((y_mat[,1]-mvbart_mod$y_mat_mean[,1])*(y_mat[,2]-mvbart_mod$y_mat_mean[,2]))
