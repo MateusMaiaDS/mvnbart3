@@ -18,14 +18,14 @@ f_true_Q <- function(X){
 }
 
 # true covariance matrix for residuals
-sigma_c <- 10
-sigma_q <- 10
-rho <- 0.5
+sigma_c <- 1
+sigma_q <- 1
+rho <- 0.1
 Sigma <- matrix(c(sigma_c^2,sigma_c*sigma_q*rho,sigma_c*sigma_q*rho,sigma_q^2), nrow = 2)
 Sigma_chol <- t(chol(Sigma))
 
 # sample size
-N <- 400
+N <- 500
 
 data_train <- data.frame(X1 = rep(NA, N))
 data_train$X1 <- runif(N, -1, 1)
@@ -100,7 +100,12 @@ rmse(q_hat$yhat.train.mean,mvbart_mod$y_mat_mean[,2])
 crossprod((y_mat-mvbart_mod$y_mat_mean))
 sum((y_mat[,1]-mvbart_mod$y_mat_mean[,1])*(y_mat[,2]-mvbart_mod$y_mat_mean[,2]))
 
-sigma_one <- numeric()
+sigma_one <- sigma_two <- numeric()
 for(i in 1:dim(mvbart_mod$all_Sigma_post)[3]){
         sigma_one[i] <- sqrt(mvbart_mod$all_Sigma_post[1,1,i])
+        sigma_two[i] <- sqrt(mvbart_mod$all_Sigma_post[2,2,i])
+
 }
+
+plot(sigma_one, type = "l")
+plot(sigma_two, type = "l")
