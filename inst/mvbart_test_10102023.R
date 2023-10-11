@@ -1,10 +1,10 @@
 # install.packages("devtools")
-# devtools::install_github("MateusMaiaDS/mvnbart3", force = TRUE)
+devtools::install_github("MateusMaiaDS/mvnbart3", force = TRUE)
 rm(list=ls())
 library(ggplot2)
 library(bayesplot)
-library(mvnbart3)
-
+# library(mvnbart3)
+devtools::lao
 # simulate data ####
 
 # true regression functions

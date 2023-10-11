@@ -7,25 +7,25 @@ load_all()
 # true regression functions
 f_true_C <- function(X){
      as.numeric(
-          (cos(2*X[1]))
+          5*(cos(2*X[1]))
      )
 }
 
 f_true_Q <- function(X){
      as.numeric(
-          (3 * X[1])
+          5*(3 * X[1])
      )
 }
 
 # true covariance matrix for residuals
-sigma_c <- 1
+sigma_c <- 10
 sigma_q <- 1
 rho <- 0.9
 Sigma <- matrix(c(sigma_c^2,sigma_c*sigma_q*rho,sigma_c*sigma_q*rho,sigma_q^2), nrow = 2)
 Sigma_chol <- t(chol(Sigma))
 
 # sample size
-N <- 100
+N <- 250
 
 data_train <- data.frame(X1 = rep(NA, N))
 data_train$X1 <- runif(N, -1, 1)
@@ -78,7 +78,7 @@ colnames(y_mat) <- c("C","Q")
 mvbart_mod <- mvnbart3(x_train = x_train,
                    y_mat = y_mat,
                    x_test = x_test,
-                   n_tree = 100,
+                   n_tree = 50,
                    n_mcmc = 2500,df = 3,
                    n_burn = 500,Sigma_init = Sigma)
 
@@ -128,3 +128,8 @@ points(x_train$X1,q_bart$yhat.train.mean, pch = 20)
 # plot(x_train$X1,y_mat[,2], main = expression(Q))
 # lines(x_train$X1,mvbart_mod2$q_hat %>% rowMeans(), pch = 20)
 # lines(x_train$X1, 3*x_train$X1, col = "blue")
+
+
+sqrt(mvbart_mod$Sigma_post_mean[1,1])
+sqrt(mvbart_mod$Sigma_post_mean[2,2])
+mvbart_mod$Sigma_post_mean[1,2]/(sqrt(mvbart_mod$Sigma_post_mean[1,1])*mvbart_mod$Sigma_post_mean[2,2])
