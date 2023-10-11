@@ -73,10 +73,10 @@ mvnbart3 <- function(x_train,
 
 
      # Normalising all the columns
-     for(i in 1:ncol(x_train)){
-             x_train_scale[,i] <- normalize_covariates_bart(y = x_train_scale[,i],a = x_min[i], b = x_max[i])
-             x_test_scale[,i] <- normalize_covariates_bart(y = x_test_scale[,i],a = x_min[i], b = x_max[i])
-     }
+     # for(i in 1:ncol(x_train)){
+     #         x_train_scale[,i] <- normalize_covariates_bart(y = x_train_scale[,i],a = x_min[i], b = x_max[i])
+     #         x_test_scale[,i] <- normalize_covariates_bart(y = x_test_scale[,i],a = x_min[i], b = x_max[i])
+     # }
 
      # Creating the numcuts matrix of splitting rules
      xcut_m <- matrix(NA,nrow = numcut,ncol = ncol(x_train_scale))
@@ -96,6 +96,12 @@ mvnbart3 <- function(x_train,
      min_y <- apply(y_mat,2,min)
      max_y <- apply(y_mat,2,max)
 
+     # Scaling the data
+     # y_mat_scale <- y_mat
+     # for(n_col in 1:NCOL(y_mat)){
+     #    y_mat_scale[,n_col] <- normalize_bart(y = y_mat[,n_col],a = min_y[n_col],b = max_y[n_col])
+     # }
+
      # Getting the min and max for each column
      min_x <- apply(x_train_scale,2,min)
      max_x <- apply(x_train_scale, 2, max)
@@ -103,6 +109,11 @@ mvnbart3 <- function(x_train,
 
      # Defining tau_mu_j
      tau_mu_j <- (4*n_tree*(kappa^2))/((max_y-min_y)^2)
+
+     # In case of scaling
+     # min_y_scale <- apply(y_mat_scale, 2,min)
+     # max_y_scale <- apply(y_mat_scale, 2,max)
+     # tau_mu_j <- (4*n_tree*(kappa^2))/((max_y_scale-min_y_scale)^2)
 
      sigma_mu_j <- tau_mu_j^(-1/2)
 
@@ -129,6 +140,7 @@ mvnbart3 <- function(x_train,
      qchi <- stats::qchisq(p = 1-sigquant,df = df,lower.tail = 1,ncp = 0)
      lambda <- (nsigma*nsigma*qchi)/df
      rate_tau <- (lambda*df)/2
+
      S_0_wish <- 2*df*diag(c(rate_tau))
 
      # Call the bart function
@@ -178,6 +190,8 @@ mvnbart3 <- function(x_train,
      y_mat_mean <- y_train_for/dim(y_train_post)[3]
      y_mat_test_mean <- y_test_for/dim(y_test_post)[3]
      sigmas_mean <- sqrt(diag(Sigma_post_mean))
+
+
 
      # Return the list with all objects and parameters
      return(list(y_hat = y_train_post,

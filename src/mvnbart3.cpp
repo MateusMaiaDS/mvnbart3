@@ -1093,6 +1093,11 @@ Rcpp::List cppbart(arma::mat x_train,
                 arma::mat y_mat_hat(data.x_train.n_rows,data.y_mat.n_cols,arma::fill::zeros);
                 arma::mat y_mat_test_hat(data.x_test.n_rows,data.y_mat.n_cols,arma::fill::zeros);
 
+
+                arma::vec partial_u(data.x_train.n_rows);
+                arma::mat y_mj(data.x_train.n_rows,data.y_mat.n_cols);
+                arma::mat y_hat_mj(data.x_train.n_rows,data.y_mat.n_cols);
+
                 // Iterating over the d-dimension MATRICES of the response.
                 for(int j = 0; j < data.y_mat.n_cols; j++){
 
@@ -1112,10 +1117,8 @@ Rcpp::List cppbart(arma::mat x_train,
                         Sigma_mj_mj.shed_row(j);
                         Sigma_mj_mj.shed_col(j);
 
+                        // cout <<  "SIGMA_MJ_MJ has the value " << Sigma_mj_mj(0,0) << endl;
 
-                        arma::vec partial_u(data.x_train.n_rows);
-                        arma::mat y_mj(data.x_train.n_rows,data.y_mat.n_cols);
-                        arma::mat y_hat_mj(data.x_train.n_rows,data.y_mat.n_cols);
 
                         // cout << "Sigma - nrows: "<< Sigma_j_mj.n_rows;
                         // cout << "Sigma - ncols: "<< Sigma_j_mj.n_cols;
@@ -1135,6 +1138,8 @@ Rcpp::List cppbart(arma::mat x_train,
 
                         }
 
+                        // cout <<  "SIGMA_J_MJ has the value " << Sigma_j_mj << endl;
+
 
                         // Rcpp::Rcout << "error here 3.8" << endl;
 
@@ -1151,11 +1156,23 @@ Rcpp::List cppbart(arma::mat x_train,
 
                         // Calculating the current partial U
                         for(int i_train = 0; i_train < data.y_mat.n_rows;i_train++){
-                                partial_u(i_train) = arma::as_scalar(Sigma_mj_j*Sigma_mj_mj_inv*(y_mj.row(i_train)-y_hat_mj.row(i_train)));
+                                // cout << Sigma_mj_mj_inv << endl;
+                                if(j!=0){
+                                        partial_u(i_train) = arma::as_scalar(Sigma_mj_j*Sigma_mj_mj_inv*(y_mj.row(i_train)-y_hat_mj.row(i_train))); // Old version
+                                } else {
+                                        partial_u(i_train) = 0.0;
+                                }
+                                // partial_u(i_train) = y_mat_hat(i_train,j) + arma::as_scalar(Sigma_mj_j*Sigma_mj_mj_inv*(y_mj.row(i_train)-y_hat_mj.row(i_train)));
+
                         }
 
                         double v = Sigma_j_j - arma::as_scalar(Sigma_j_mj*Sigma_mj_mj_inv*Sigma_mj_j);
-                        data.v_j = v;
+                        if(j!=0){
+                                data.v_j = v;
+                        } else {
+                                data.v_j = Sigma_j_j;
+                        }
+
                         data.sigma_mu_j = data.sigma_mu(j);
 
                         // Rcpp::Rcout << "error here 4" << endl;
