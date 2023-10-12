@@ -25,7 +25,7 @@ Sigma <- matrix(c(sigma_c^2,sigma_c*sigma_q*rho,sigma_c*sigma_q*rho,sigma_q^2), 
 Sigma_chol <- t(chol(Sigma))
 
 # sample size
-N <- 250
+N <- 400
 
 data_train <- data.frame(X1 = rep(NA, N))
 data_train$X1 <- runif(N, -1, 1)

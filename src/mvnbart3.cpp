@@ -1095,6 +1095,7 @@ Rcpp::List cppbart(arma::mat x_train,
 
 
                 arma::vec partial_u(data.x_train.n_rows);
+                arma::vec partial_u_tilda(data.x_train.n_rows);
                 arma::mat y_mj(data.x_train.n_rows,data.y_mat.n_cols);
                 arma::mat y_hat_mj(data.x_train.n_rows,data.y_mat.n_cols);
 
@@ -1157,21 +1158,21 @@ Rcpp::List cppbart(arma::mat x_train,
                         // Calculating the current partial U
                         for(int i_train = 0; i_train < data.y_mat.n_rows;i_train++){
                                 // cout << Sigma_mj_mj_inv << endl;
-                                if(j!=0){
+                                // if(i!=0){
                                         partial_u(i_train) = arma::as_scalar(Sigma_mj_j*Sigma_mj_mj_inv*(y_mj.row(i_train)-y_hat_mj.row(i_train))); // Old version
-                                } else {
-                                        partial_u(i_train) = 0.0;
-                                }
-                                // partial_u(i_train) = y_mat_hat(i_train,j) + arma::as_scalar(Sigma_mj_j*Sigma_mj_mj_inv*(y_mj.row(i_train)-y_hat_mj.row(i_train)));
+                                // } else {
 
+                                        // partial_u(i_train) = 0.0;
+                                // }
                         }
 
                         double v = Sigma_j_j - arma::as_scalar(Sigma_j_mj*Sigma_mj_mj_inv*Sigma_mj_j);
-                        if(j!=0){
+
+                        // if(i!=0){
                                 data.v_j = v;
-                        } else {
-                                data.v_j = Sigma_j_j;
-                        }
+                        // } else {
+                        //         data.v_j = Sigma_j_j;
+                        // }
 
                         data.sigma_mu_j = data.sigma_mu(j);
 
