@@ -884,7 +884,7 @@ void Node::nodeLogLike(modelParam& data){
 }
 
 // UPDATING MU
-void updateMu(Node* tree, modelParam &data){
+void updateMu(Node* tree, modelParam &data, arma::vec &curr_r, arma::vec &curr_u){
 
         // Getting the terminal nodes
         std::vector<Node*> t_nodes = leaves(tree);
@@ -892,6 +892,13 @@ void updateMu(Node* tree, modelParam &data){
 
         // Iterating over the terminal nodes and updating the beta values
         for(int i = 0; i < t_nodes.size();i++){
+                double s_j = 0;
+                double gamma_j = 0;
+
+                // for(int k = 0; k < t_nodes[i]->train_index.size(); k++){
+                //         s_j = curr
+                // }
+
                 t_nodes[i]->mu = R::rnorm((t_nodes[i]->S_j)/(t_nodes[i]->Gamma_j),sqrt(data.v_j/(t_nodes[i]->Gamma_j))) ;
 
         }
@@ -995,7 +1002,8 @@ Rcpp::List cppbart(arma::mat x_train,
           arma::vec sigma_mu,
           double alpha, double beta, double nu,
           arma::mat S_0_wish,
-          arma::vec A_j_vec){
+          arma::vec A_j_vec,
+          bool update_Sigma){
 
         // Posterior counter
         int curr = 0;
@@ -1095,7 +1103,6 @@ Rcpp::List cppbart(arma::mat x_train,
 
 
                 arma::vec partial_u(data.x_train.n_rows);
-                arma::vec partial_u_tilda(data.x_train.n_rows);
                 arma::mat y_mj(data.x_train.n_rows,data.y_mat.n_cols);
                 arma::mat y_hat_mj(data.x_train.n_rows,data.y_mat.n_cols);
 
@@ -1157,102 +1164,94 @@ Rcpp::List cppbart(arma::mat x_train,
 
                         // Calculating the current partial U
                         for(int i_train = 0; i_train < data.y_mat.n_rows;i_train++){
-                                // cout << Sigma_mj_mj_inv << endl;
-                                // if(i!=0){
-                                        partial_u(i_train) = arma::as_scalar(Sigma_mj_j*Sigma_mj_mj_inv*(y_mj.row(i_train)-y_hat_mj.row(i_train))); // Old version
-                                // } else {
+                                        cout << "The scale factor of  the residuals " << Sigma_mj_j*Sigma_mj_mj_inv <<endl;
+                                        partial_u(i_train) = arma::as_scalar(Sigma_mj_j*Sigma_mj_mj_inv*(y_mj.row(i_train)-y_hat_mj(i_train))); // Old version
 
-                                        // partial_u(i_train) = 0.0;
-                                // }
                         }
 
                         double v = Sigma_j_j - arma::as_scalar(Sigma_j_mj*Sigma_mj_mj_inv*Sigma_mj_j);
 
-                        // if(i!=0){
-                                data.v_j = v;
-                        // } else {
-                        //         data.v_j = Sigma_j_j;
-                        // }
+                        data.v_j = v;
+                        // cout << "Current V(j) that has been used: " << data.v_j << endl;
+
 
                         data.sigma_mu_j = data.sigma_mu(j);
-
                         // Rcpp::Rcout << "error here 4" << endl;
 
 
                         // Updating the tree
-                                for(int t = 0; t<data.n_tree;t++){
+                        for(int t = 0; t<data.n_tree;t++){
 
-                                        // Current tree counter
-                                        curr_tree_counter = t + j*data.n_tree;
-                                        // cout << "curr_tree_counter value:" << curr_tree_counter << endl;
-                                        // Creating the auxliar prediction vector
-                                        arma::vec y_j_hat(data.y_mat.n_rows,arma::fill::zeros);
-                                        arma::vec y_j_test_hat(data.x_test.n_rows,arma::fill::zeros);
+                                // Current tree counter
+                                curr_tree_counter = t + j*data.n_tree;
+                                // cout << "curr_tree_counter value:" << curr_tree_counter << endl;
+                                // Creating the auxliar prediction vector
+                                arma::vec y_j_hat(data.y_mat.n_rows,arma::fill::zeros);
+                                arma::vec y_j_test_hat(data.x_test.n_rows,arma::fill::zeros);
 
-                                        // Updating the partial residuals
-                                        if(data.n_tree>1){
-                                                partial_residuals = data.y_mat.col(j)-sum_exclude_col(tree_fits_store.slice(j),t);
-                                        } else {
-                                                partial_residuals = data.y_mat.col(j);
-                                        }
+                                // Updating the partial residuals
+                                if(data.n_tree>1){
+                                        partial_residuals = data.y_mat.col(j)-sum_exclude_col(tree_fits_store.slice(j),t);
+                                } else {
+                                        partial_residuals = data.y_mat.col(j);
+                                }
 
-                                        // Iterating over all trees
-                                        verb = arma::randu(arma::distr_param(0.0,1.0));
+                                // Iterating over all trees
+                                verb = arma::randu(arma::distr_param(0.0,0.5));
 
-                                        if(all_forest.trees[curr_tree_counter]->isLeaf & all_forest.trees[curr_tree_counter]->isRoot){
-                                                // verb = arma::randu(arma::distr_param(0.0,0.3));
-                                                verb = 0.1;
-                                        }
+                                if(all_forest.trees[curr_tree_counter]->isLeaf & all_forest.trees[curr_tree_counter]->isRoot){
+                                        // verb = arma::randu(arma::distr_param(0.0,0.3));
+                                        verb = 0.1;
+                                }
 
-                                        // Selecting the verb
-                                        if(verb < 0.25){
-                                                data.move_proposal(0)++;
-                                                // cout << " Grow error" << endl;
-                                                // Rcpp::stop("STOP ENTERED INTO A GROW");
-                                                grow(all_forest.trees[curr_tree_counter],data,partial_residuals,partial_u);
-                                        } else if(verb>=0.25 & verb <0.5) {
-                                                data.move_proposal(1)++;
-                                                // Rcpp::stop("STOP ENTERED INTO A PRUNE");
-                                                // cout << " Prune error" << endl;
-                                                prune(all_forest.trees[curr_tree_counter], data, partial_residuals,partial_u);
-                                        } else {
-                                                data.move_proposal(2)++;
-                                                // cout << " Change error" << endl;
-                                                change(all_forest.trees[curr_tree_counter], data, partial_residuals,partial_u);
-                                                // std::cout << "Error after change" << endl;
-                                        }
-
-
-                                        updateMu(all_forest.trees[curr_tree_counter],data);
-
-                                        // Getting predictions
-                                        // cout << " Error on Get Predictions" << endl;
-                                        getPredictions(all_forest.trees[curr_tree_counter],data,y_j_hat,y_j_test_hat);
-
-                                        // Updating the tree
-                                        // cout << "Residuals error 2.0"<< endl;
-                                        tree_fits_store.slice(j).col(t) = y_j_hat;
-                                        // cout << "Residuals error 3.0"<< endl;
-                                        tree_fits_store_test.slice(j).col(t) = y_j_test_hat;
-                                        // cout << "Residuals error 4.0"<< endl;
+                                // Selecting the verb
+                                if(verb < 0.25){
+                                        data.move_proposal(0)++;
+                                        // cout << " Grow error" << endl;
+                                        // Rcpp::stop("STOP ENTERED INTO A GROW");
+                                        grow(all_forest.trees[curr_tree_counter],data,partial_residuals,partial_u);
+                                } else if(verb>=0.25 & verb <0.5) {
+                                        data.move_proposal(1)++;
+                                        // Rcpp::stop("STOP ENTERED INTO A PRUNE");
+                                        // cout << " Prune error" << endl;
+                                        prune(all_forest.trees[curr_tree_counter], data, partial_residuals,partial_u);
+                                } else {
+                                        data.move_proposal(5)++;
+                                        // cout << " Change error" << endl;
+                                        change(all_forest.trees[curr_tree_counter], data, partial_residuals,partial_u);
+                                        // std::cout << "Error after change" << endl;
+                                }
 
 
-                                } // End of iterations over "t"
+                                updateMu(all_forest.trees[curr_tree_counter],data,partial_residuals,partial_u);
 
-                                // Summing over all trees
-                                prediction_train_sum = sum(tree_fits_store.slice(j),1);
-                                y_mat_hat.col(j) = prediction_train_sum;
+                                // Getting predictions
+                                // cout << " Error on Get Predictions" << endl;
+                                getPredictions(all_forest.trees[curr_tree_counter],data,y_j_hat,y_j_test_hat);
 
-                                prediction_test_sum = sum(tree_fits_store_test.slice(j),1);
-                                y_mat_test_hat.col(j) = prediction_test_sum;
+                                // Updating the tree
+                                // cout << "Residuals error 2.0"<< endl;
+                                tree_fits_store.slice(j).col(t) = y_j_hat;
+                                // cout << "Residuals error 3.0"<< endl;
+                                tree_fits_store_test.slice(j).col(t) = y_j_test_hat;
+                                // cout << "Residuals error 4.0"<< endl;
+                        } // End of iterations over "t"
+
+                        // Summing over all trees
+                        prediction_train_sum = sum(tree_fits_store.slice(j),1);
+                        y_mat_hat.col(j) = prediction_train_sum;
+
+                        prediction_test_sum = sum(tree_fits_store_test.slice(j),1);
+                        y_mat_test_hat.col(j) = prediction_test_sum;
 
                 }// End of iterations over "j"
 
-
-
                 // std::cout << "Error Tau: " << data.tau<< endl;
-                update_a_j(data);
-                updateSigma(y_mat_hat, data);
+                if(update_Sigma){
+                        update_a_j(data);
+                        updateSigma(y_mat_hat, data);
+                }
+
                 all_Sigma_post.slice(i) = data.Sigma;
 
                 // std::cout << " All good " << endl;
@@ -1292,5 +1291,6 @@ Rcpp::List cppbart(arma::mat x_train,
                                   data.move_acceptance //[6]
                                 );
 }
+
 
 

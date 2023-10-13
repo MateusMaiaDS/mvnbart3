@@ -20,12 +20,12 @@ f_true_Q <- function(X){
 # true covariance matrix for residuals
 sigma_c <- 10
 sigma_q <- 1
-rho <- 0.9
+rho <- 0.5
 Sigma <- matrix(c(sigma_c^2,sigma_c*sigma_q*rho,sigma_c*sigma_q*rho,sigma_q^2), nrow = 2)
 Sigma_chol <- t(chol(Sigma))
 
 # sample size
-N <- 400
+N <- 100
 
 data_train <- data.frame(X1 = rep(NA, N))
 data_train$X1 <- runif(N, -1, 1)
@@ -78,9 +78,9 @@ colnames(y_mat) <- c("C","Q")
 mvbart_mod <- mvnbart3(x_train = x_train,
                    y_mat = y_mat,
                    x_test = x_test,
-                   n_tree = 50,
+                   n_tree = 1,
                    n_mcmc = 2500,df = 3,
-                   n_burn = 500,Sigma_init = Sigma)
+                   n_burn = 500,Sigma_init = Sigma,update_Sigma =  FALSE)
 
 # load_all("/Users/mateusmaia/Documents/mvnbart2")
 # mvbart_mod2 <- mvnbart(x_train = x_train,
@@ -108,8 +108,8 @@ plot(x_train$X1,y_mat[,2], main = expression(Q))
 points(x_train$X1,mvbart_mod$y_hat_mean[,2], pch = 20)
 
 # Comparing with the BART predictions
-c_bart <- dbarts::bart(x.train = x_train,y.train = y_mat[,1],x.test = x_test,ntree = 100)
-q_bart <- dbarts::bart(x.train = x_train,y.train = y_mat[,2],x.test = x_test,ntree = 100)
+c_bart <- dbarts::bart(x.train = x_train,y.train = y_mat[,1],x.test = x_test,ntree = 1)
+q_bart <- dbarts::bart(x.train = x_train,y.train = y_mat[,2],x.test = x_test,ntree = 1)
 
 plot(x_train$X1,y_mat[,1], main = expression(C))
 points(x_train$X1,c_bart$yhat.train.mean, pch = 20)

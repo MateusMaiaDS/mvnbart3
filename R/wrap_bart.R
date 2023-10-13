@@ -18,7 +18,8 @@ mvnbart3 <- function(x_train,
                   kappa = 2,
                   numcut = 100L, # Defining the grid of split rules
                   usequants = FALSE,
-                  Sigma_init = NULL
+                  Sigma_init = NULL,
+                  update_Sigma = TRUE
                   ) {
 
      # Verifying if it's been using a y_mat matrix
@@ -73,10 +74,10 @@ mvnbart3 <- function(x_train,
 
 
      # Normalising all the columns
-     # for(i in 1:ncol(x_train)){
-     #         x_train_scale[,i] <- normalize_covariates_bart(y = x_train_scale[,i],a = x_min[i], b = x_max[i])
-     #         x_test_scale[,i] <- normalize_covariates_bart(y = x_test_scale[,i],a = x_min[i], b = x_max[i])
-     # }
+     for(i in 1:ncol(x_train)){
+             x_train_scale[,i] <- normalize_covariates_bart(y = x_train_scale[,i],a = x_min[i], b = x_max[i])
+             x_test_scale[,i] <- normalize_covariates_bart(y = x_test_scale[,i],a = x_min[i], b = x_max[i])
+     }
 
      # Creating the numcuts matrix of splitting rules
      xcut_m <- matrix(NA,nrow = numcut,ncol = ncol(x_train_scale))
@@ -165,7 +166,8 @@ mvnbart3 <- function(x_train,
                           sigma_mu_j,
                           alpha,beta,nu,
                           S_0_wish,
-                          A_j)
+                          A_j,
+                          update_Sigma)
 
 
      # Returning the main components from the model
