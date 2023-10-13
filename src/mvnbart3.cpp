@@ -892,8 +892,8 @@ void updateMu(Node* tree, modelParam &data, arma::vec &curr_r, arma::vec &curr_u
 
         // Iterating over the terminal nodes and updating the beta values
         for(int i = 0; i < t_nodes.size();i++){
-                double s_j = 0;
-                double gamma_j = 0;
+                // double s_j = 0;
+                // double gamma_j = 0;
 
                 // for(int k = 0; k < t_nodes[i]->train_index.size(); k++){
                 //         s_j = curr
@@ -1164,7 +1164,7 @@ Rcpp::List cppbart(arma::mat x_train,
 
                         // Calculating the current partial U
                         for(int i_train = 0; i_train < data.y_mat.n_rows;i_train++){
-                                        cout << "The scale factor of  the residuals " << Sigma_mj_j*Sigma_mj_mj_inv <<endl;
+                                        // cout << "The scale factor of  the residuals " << Sigma_mj_j*Sigma_mj_mj_inv <<endl;
                                         partial_u(i_train) = arma::as_scalar(Sigma_mj_j*Sigma_mj_mj_inv*(y_mj.row(i_train)-y_hat_mj(i_train))); // Old version
 
                         }
