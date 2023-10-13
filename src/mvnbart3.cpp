@@ -1053,12 +1053,6 @@ Rcpp::List cppbart(arma::mat x_train,
         arma::cube tree_fits_store(data.x_train.n_rows,data.n_tree,data.y_mat.n_cols,arma::fill::zeros);
         arma::cube tree_fits_store_test(data.x_test.n_rows,data.n_tree,y_mat.n_cols,arma::fill::zeros);
 
-        // Rcpp::Rcout << "error here3" << endl;
-
-        // In case if I need to start with another initial values
-        // for(int i = 0 ; i < data.n_tree ; i ++ ){
-        //         tree_fits_store.col(i) = partial_pred;
-        // }
 
         double verb;
 
@@ -1074,6 +1068,11 @@ Rcpp::List cppbart(arma::mat x_train,
 
         // Creating variables to help define in which tree set we are;
         int curr_tree_counter;
+
+        // Matrix that store all the predictions for all y
+        arma::mat y_mat_hat(data.x_train.n_rows,data.y_mat.n_cols,arma::fill::zeros);
+        arma::mat y_mat_test_hat(data.x_test.n_rows,data.y_mat.n_cols,arma::fill::zeros);
+
 
         for(int i = 0;i<data.n_mcmc;i++){
 
@@ -1097,10 +1096,6 @@ Rcpp::List cppbart(arma::mat x_train,
                 arma::mat prediction_train_sum(data.x_train.n_rows,data.y_mat.n_cols,arma::fill::zeros);
                 arma::mat prediction_test_sum(data.x_test.n_rows,data.y_mat.n_cols,arma::fill::zeros);
 
-                // Matrix that store all the predictions for all y
-                arma::mat y_mat_hat(data.x_train.n_rows,data.y_mat.n_cols,arma::fill::zeros);
-                arma::mat y_mat_test_hat(data.x_test.n_rows,data.y_mat.n_cols,arma::fill::zeros);
-
 
                 arma::vec partial_u(data.x_train.n_rows);
                 arma::mat y_mj(data.x_train.n_rows,data.y_mat.n_cols);
@@ -1119,17 +1114,10 @@ Rcpp::List cppbart(arma::mat x_train,
 
                         int aux_j_counter = 0;
 
-                        // Rcpp::Rcout << "error here 3.5" << endl;
 
                         // Dropping the column with respect to "j"
                         Sigma_mj_mj.shed_row(j);
                         Sigma_mj_mj.shed_col(j);
-
-                        // cout <<  "SIGMA_MJ_MJ has the value " << Sigma_mj_mj(0,0) << endl;
-
-
-                        // cout << "Sigma - nrows: "<< Sigma_j_mj.n_rows;
-                        // cout << "Sigma - ncols: "<< Sigma_j_mj.n_cols;
 
                         for(int d = 0; d < data.y_mat.n_cols; d++){
 
@@ -1140,16 +1128,8 @@ Rcpp::List cppbart(arma::mat x_train,
                                         aux_j_counter = aux_j_counter + 1;
                                 }
 
-                                // Rcpp::Rcout << " aux_j: " << (data.y_mat.n_cols-1) << endl;
-
-
-
                         }
 
-                        // cout <<  "SIGMA_J_MJ has the value " << Sigma_j_mj << endl;
-
-
-                        // Rcpp::Rcout << "error here 3.8" << endl;
 
                         // ============================================
                         // This step does not iterate over the trees!!!
@@ -1172,8 +1152,6 @@ Rcpp::List cppbart(arma::mat x_train,
                         double v = Sigma_j_j - arma::as_scalar(Sigma_j_mj*Sigma_mj_mj_inv*Sigma_mj_j);
 
                         data.v_j = v;
-                        // cout << "Current V(j) that has been used: " << data.v_j << endl;
-
 
                         data.sigma_mu_j = data.sigma_mu(j);
                         // Rcpp::Rcout << "error here 4" << endl;
@@ -1197,7 +1175,7 @@ Rcpp::List cppbart(arma::mat x_train,
                                 }
 
                                 // Iterating over all trees
-                                verb = arma::randu(arma::distr_param(0.0,0.5));
+                                verb = arma::randu(arma::distr_param(0.0,1.0));
 
                                 if(all_forest.trees[curr_tree_counter]->isLeaf & all_forest.trees[curr_tree_counter]->isRoot){
                                         // verb = arma::randu(arma::distr_param(0.0,0.3));
@@ -1212,14 +1190,10 @@ Rcpp::List cppbart(arma::mat x_train,
                                         grow(all_forest.trees[curr_tree_counter],data,partial_residuals,partial_u);
                                 } else if(verb>=0.25 & verb <0.5) {
                                         data.move_proposal(1)++;
-                                        // Rcpp::stop("STOP ENTERED INTO A PRUNE");
-                                        // cout << " Prune error" << endl;
                                         prune(all_forest.trees[curr_tree_counter], data, partial_residuals,partial_u);
                                 } else {
-                                        data.move_proposal(5)++;
-                                        // cout << " Change error" << endl;
+                                        data.move_proposal(2)++;
                                         change(all_forest.trees[curr_tree_counter], data, partial_residuals,partial_u);
-                                        // std::cout << "Error after change" << endl;
                                 }
 
 

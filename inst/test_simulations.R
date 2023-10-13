@@ -18,14 +18,14 @@ f_true_Q <- function(X){
 }
 
 # true covariance matrix for residuals
-sigma_c <- 10
+sigma_c <- 1
 sigma_q <- 1
-rho <- 0.5
+rho <- 0.8
 Sigma <- matrix(c(sigma_c^2,sigma_c*sigma_q*rho,sigma_c*sigma_q*rho,sigma_q^2), nrow = 2)
 Sigma_chol <- t(chol(Sigma))
 
 # sample size
-N <- 100
+N <- 250
 
 data_train <- data.frame(X1 = rep(NA, N))
 data_train$X1 <- runif(N, -1, 1)
@@ -78,9 +78,10 @@ colnames(y_mat) <- c("C","Q")
 mvbart_mod <- mvnbart3(x_train = x_train,
                    y_mat = y_mat,
                    x_test = x_test,
-                   n_tree = 1,
+                   n_tree = 50,
                    n_mcmc = 2500,df = 3,
-                   n_burn = 500,Sigma_init = Sigma,update_Sigma =  FALSE)
+                   n_burn = 500,Sigma_init = Sigma,
+                   update_Sigma =  TRUE)
 
 # load_all("/Users/mateusmaia/Documents/mvnbart2")
 # mvbart_mod2 <- mvnbart(x_train = x_train,
