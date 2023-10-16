@@ -19,7 +19,8 @@ mvnbart3 <- function(x_train,
                   numcut = 100L, # Defining the grid of split rules
                   usequants = FALSE,
                   Sigma_init = NULL,
-                  update_Sigma = TRUE
+                  update_Sigma = TRUE,
+                  conditional_bool = TRUE
                   ) {
 
      # Verifying if it's been using a y_mat matrix
@@ -167,7 +168,8 @@ mvnbart3 <- function(x_train,
                           alpha,beta,nu,
                           S_0_wish,
                           A_j,
-                          update_Sigma)
+                          update_Sigma,
+                          conditional_bool)
 
 
      # Returning the main components from the model
@@ -212,7 +214,9 @@ mvnbart3 <- function(x_train,
                               A_j = A_j,
                               mu_init = mu_init,
                               tree_proposal = bart_obj[[5]],
-                              tree_acceptance = bart_obj[[6]]),
+                              tree_acceptance = bart_obj[[6]],
+                              update_Sigma = update_Sigma,
+                              conditional_bool = conditional_bool),
                  mcmc = list(n_mcmc = n_mcmc,
                              n_burn = n_burn),
                  data = list(x_train = x_train,

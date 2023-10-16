@@ -1003,7 +1003,8 @@ Rcpp::List cppbart(arma::mat x_train,
           double alpha, double beta, double nu,
           arma::mat S_0_wish,
           arma::vec A_j_vec,
-          bool update_Sigma){
+          bool update_Sigma,
+          bool conditional_bool){
 
         // Posterior counter
         int curr = 0;
@@ -1142,16 +1143,34 @@ Rcpp::List cppbart(arma::mat x_train,
                         // Calculating the invertion that gonna be used for the U and V
                         arma::mat Sigma_mj_mj_inv = arma::inv(Sigma_mj_mj);
 
-                        // Calculating the current partial U
-                        for(int i_train = 0; i_train < data.y_mat.n_rows;i_train++){
-                                        // cout << "The scale factor of  the residuals " << Sigma_mj_j*Sigma_mj_mj_inv <<endl;
-                                        partial_u(i_train) = arma::as_scalar(Sigma_mj_j*Sigma_mj_mj_inv*(y_mj.row(i_train)-y_hat_mj(i_train))); // Old version
+                        if(conditional_bool){
+                                // Calculating the current partial U
+                                for(int i_train = 0; i_train < data.y_mat.n_rows;i_train++){
+                                                // cout << "The scale factor of  the residuals " << Sigma_mj_j*Sigma_mj_mj_inv <<endl;
+                                                partial_u(i_train) = arma::as_scalar(Sigma_mj_j*Sigma_mj_mj_inv*(y_mj.row(i_train)-y_hat_mj(i_train))); // Old version
 
+                                }
+
+                                double v = Sigma_j_j - arma::as_scalar(Sigma_j_mj*Sigma_mj_mj_inv*Sigma_mj_j);
+                                data.v_j = v;
+
+                        } else {
+                                if(j!=0){
+                                        // Calculating the current partial U
+                                        for(int i_train = 0; i_train < data.y_mat.n_rows;i_train++){
+                                                // cout << "The scale factor of  the residuals " << Sigma_mj_j*Sigma_mj_mj_inv <<endl;
+                                                partial_u(i_train) = arma::as_scalar(Sigma_mj_j*Sigma_mj_mj_inv*(y_mj.row(i_train)-y_hat_mj(i_train))); // Old version
+
+                                        }
+
+                                        double v = Sigma_j_j - arma::as_scalar(Sigma_j_mj*Sigma_mj_mj_inv*Sigma_mj_j);
+                                        data.v_j = v;
+                                } else {
+                                        data.v_j = Sigma_j_j;
+                                }
                         }
 
-                        double v = Sigma_j_j - arma::as_scalar(Sigma_j_mj*Sigma_mj_mj_inv*Sigma_mj_j);
 
-                        data.v_j = v;
 
                         data.sigma_mu_j = data.sigma_mu(j);
                         // Rcpp::Rcout << "error here 4" << endl;

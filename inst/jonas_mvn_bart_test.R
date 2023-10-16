@@ -1,6 +1,7 @@
 # install.packages("devtools")
 rm(list=ls())
-devtools::install_github("MateusMaiaDS/mvnbart3")
+# devtools::install_github("MateusMaiaDS/mvnbart3")
+devtools::load_all()
 
 library(BART)
 library(mvnbart3)
@@ -16,7 +17,7 @@ f_true_C <- function(X){
 
 f_true_Q <- function(X){
   as.numeric(
-    3 * X[1] * X[4]^3 + X[2]
+    3 * X[1] * X[4]^3
   )
 }
 
@@ -72,15 +73,16 @@ for (i in 1:N){
 
 x_train <- data_train[,1:4]
 x_test <- x_train
-y_mat <- as.matrix(data_train[,c(5,7)])
-colnames(y_mat) <- c("C","Q")
+y_mat <- as.matrix(data_train[,c(7,5)])
+colnames(y_mat) <- c("Q","C")
 
-mvbart_mod <- mvnbart3::mvnbart3(x_train = x_train,
+mvbart_mod <- mvnbart3(x_train = x_train,
                                  y_mat = y_mat,
                                  x_test = x_test,
                                  n_tree = 100,
                                  n_mcmc = 2500,
-                                 n_burn = 500)
+                                 n_burn = 500,
+                                 conditional_bool = FALSE)
 
 
 
@@ -91,9 +93,16 @@ pairs(
              )
   )
 
-plot(mvbart_mod$y_mat_mean[,1], data_train$EC)
-plot(mvbart_mod$y_mat_mean[,2], data_train$EQ)
+plot(mvbart_mod$y_hat_mean[,1], data_train$EC)
+plot(mvbart_mod$y_hat_mean[,2], data_train$EQ)
 
+mean_sigma_c <- sqrt(mean(mvbart_mod$Sigma_post[1,1,]))
+mean_sigma_q <- sqrt(mean(mvbart_mod$Sigma_post[2,2,]))
+mean_rho <- mean(mvbart_mod$Sigma_post[1,2,]/(mean_sigma_c*mean_sigma_q))
+
+mean_sigma_c
+mean_sigma_q
+mean_rho
 
 plot(mvbart_mod$Sigma_post[1,1,], type = "l")
 plot(mvbart_mod$Sigma_post[1,2,], type = "l")
