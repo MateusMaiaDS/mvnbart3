@@ -20,7 +20,8 @@ mvnbart3 <- function(x_train,
                   usequants = FALSE,
                   Sigma_init = NULL,
                   update_Sigma = TRUE,
-                  conditional_bool = TRUE
+                  conditional_bool = TRUE,
+                  update_A_j = TRUE
                   ) {
 
      # Verifying if it's been using a y_mat matrix
@@ -124,7 +125,7 @@ mvnbart3 <- function(x_train,
 
      # Define the ensity function
      phalft <- function(x, A, nu){
-             return(2 * pt(x/A, nu) - 1)
+             return(2 * stats::pt(x/A, nu) - 1)
      }
 
      # Define parameters
@@ -169,7 +170,8 @@ mvnbart3 <- function(x_train,
                           S_0_wish,
                           A_j,
                           update_Sigma,
-                          conditional_bool)
+                          conditional_bool,
+                          update_A_j)
 
 
      # Returning the main components from the model

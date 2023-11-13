@@ -1004,7 +1004,8 @@ Rcpp::List cppbart(arma::mat x_train,
           arma::mat S_0_wish,
           arma::vec A_j_vec,
           bool update_Sigma,
-          bool conditional_bool){
+          bool conditional_bool,
+          bool update_A_j){
 
         // Posterior counter
         int curr = 0;
@@ -1241,7 +1242,9 @@ Rcpp::List cppbart(arma::mat x_train,
 
                 // std::cout << "Error Tau: " << data.tau<< endl;
                 if(update_Sigma){
-                        update_a_j(data);
+                        if(update_A_j){
+                                update_a_j(data);
+                        }
                         updateSigma(y_mat_hat, data);
                 }
 
