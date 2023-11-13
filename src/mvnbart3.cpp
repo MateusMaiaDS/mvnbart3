@@ -914,6 +914,13 @@ void updateSigma(arma::mat &y_mat_hat,
         // Updating sigma
         data.Sigma = arma::iwishrnd((data.S_0_wish+S),data.nu+data.y_mat.n_rows);
 
+        // Avoiding numerical error when rho = 1, or -1
+        double rho_ = data.Sigma(0,1)/(sqrt(data.Sigma(0,0))*sqrt(data.Sigma(1,1)));
+        if(abs(rho_)==1){
+                data.Sigma(0,1) = data.Sigma(0,1) - 1e-1;
+                data.Sigma(1,0) = data.Sigma(1,0) - 1e-1;
+        }
+
 }
 
 

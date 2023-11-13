@@ -146,6 +146,17 @@ mvnbart3 <- function(x_train,
 
      S_0_wish <- 2*df*diag(c(rate_tau))
 
+     #===================
+     # Visualizing priors
+     # ==================
+     #
+     # a_j <- numeric(2)
+     # for(iii in 1:length(A_j)){
+     #         a_j[iii] <- 1/stats::rgamma(n = 1,shape = 0.5,rate = 1/A_j[iii]^2)
+     #
+     # }
+     # rWishart(n = 100,df = df + 2 -1, 2*df*diag())
+
      # Call the bart function
      if(is.null(Sigma_init)){
              Sigma_init <- diag(nsigma^2)
